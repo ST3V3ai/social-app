@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 
 // Lazy initialize Resend to avoid errors during build without API key
 let resendInstance: Resend | null = null;
@@ -7,6 +8,23 @@ function getResend(): Resend | null {
     resendInstance = new Resend(process.env.RESEND_API_KEY);
   }
   return resendInstance;
+}
+
+// Lazy initialize nodemailer transporter for SMTP (Gmail, etc.)
+let smtpTransporter: nodemailer.Transporter | null = null;
+function getSmtpTransporter(): nodemailer.Transporter | null {
+  if (!smtpTransporter && process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+    smtpTransporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT || '587', 10),
+      secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
+  }
+  return smtpTransporter;
 }
 
 const FROM_EMAIL = process.env.EMAIL_FROM || 'noreply@gather.app';
@@ -21,34 +39,55 @@ export interface SendEmailOptions {
 }
 
 export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
-  // In development without API key, just log
-  if (!process.env.RESEND_API_KEY) {
-    console.log('[Email] Would send email:', {
-      to: options.to,
-      subject: options.subject,
-    });
-    console.log('[Email] Content:', options.html);
-    return true;
-  }
-
-  try {
-    const resend = getResend();
-    if (!resend) {
-      console.error('[Email] Resend not initialized');
+  // Priority 1: Use SMTP (Gmail, etc.) if configured
+  const smtpTransport = getSmtpTransporter();
+  if (smtpTransport) {
+    try {
+      await smtpTransport.sendMail({
+        from: `"${APP_NAME}" <${process.env.SMTP_USER}>`,
+        to: options.to,
+        subject: options.subject,
+        html: options.html,
+        text: options.text,
+      });
+      console.log('[Email] Sent via SMTP to:', options.to);
+      return true;
+    } catch (error) {
+      console.error('[Email] SMTP send failed:', error);
       return false;
     }
-    await resend.emails.send({
-      from: FROM_EMAIL,
-      to: options.to,
-      subject: options.subject,
-      html: options.html,
-      text: options.text,
-    });
-    return true;
-  } catch (error) {
-    console.error('[Email] Failed to send:', error);
-    return false;
   }
+
+  // Priority 2: Use Resend if API key is set
+  if (process.env.RESEND_API_KEY) {
+    try {
+      const resend = getResend();
+      if (!resend) {
+        console.error('[Email] Resend not initialized');
+        return false;
+      }
+      await resend.emails.send({
+        from: FROM_EMAIL,
+        to: options.to,
+        subject: options.subject,
+        html: options.html,
+        text: options.text,
+      });
+      console.log('[Email] Sent via Resend to:', options.to);
+      return true;
+    } catch (error) {
+      console.error('[Email] Resend send failed:', error);
+      return false;
+    }
+  }
+
+  // Fallback: Log to console (development mode)
+  console.log('[Email] Would send email:', {
+    to: options.to,
+    subject: options.subject,
+  });
+  console.log('[Email] Content:', options.html);
+  return true;
 }
 
 export async function sendMagicLinkEmail(email: string, token: string): Promise<boolean> {

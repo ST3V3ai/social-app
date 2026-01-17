@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/components/providers';
@@ -13,6 +13,7 @@ function VerifyContent() {
   
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [error, setError] = useState('');
+  const verifyAttempted = useRef(false);
 
   const token = searchParams.get('token');
   const redirect = searchParams.get('redirect') || '/';
@@ -23,6 +24,12 @@ function VerifyContent() {
       setError('Invalid verification link');
       return;
     }
+
+    // Guard against double-call in React strict mode
+    if (verifyAttempted.current) {
+      return;
+    }
+    verifyAttempted.current = true;
 
     const verify = async () => {
       const result = await verifyMagicLink(token);

@@ -58,7 +58,7 @@ export default function CreateEventPage() {
           endTime,
           timezone: formData.timezone,
           isOnline: formData.isOnline,
-          locationString: formData.isOnline ? undefined : formData.locationString,
+          location: formData.isOnline ? undefined : (formData.locationString ? { name: formData.locationString, address: formData.locationString } : undefined),
           onlineUrl: formData.isOnline ? formData.onlineUrl : undefined,
           privacy: formData.privacy,
           category: formData.category || undefined,
@@ -67,7 +67,6 @@ export default function CreateEventPage() {
           allowPlusOnes: formData.allowPlusOnes,
           maxPlusOnes: formData.maxPlusOnes,
           coverImageUrl: formData.coverImageUrl || undefined,
-          status: 'PUBLISHED',
         }),
       });
 
