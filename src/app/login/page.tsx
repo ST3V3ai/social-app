@@ -1,24 +1,23 @@
 'use client';
 
 import { useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/components/providers';
 import { Button, Input, Card } from '@/components/ui';
 
 function LoginForm() {
   const searchParams = useSearchParams();
-  const { login } = useAuth();
-  const { signInPassword } = useAuth();
+  const router = useRouter();
+  const { login, signInPassword } = useAuth();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
-  const [mode, setMode] = useState<'magic' | 'password'>('magic');
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [mode, setMode] = useState<'magic' | 'password'>('password');
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const redirect = searchParams.get('redirect') || '/';
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -30,7 +29,7 @@ function LoginForm() {
       const result = await login(email);
       setIsLoading(false);
       if (result.success) {
-        setSuccess(true);
+        setMagicLinkSent(true);
       } else {
         setError(result.error || 'Something went wrong');
       }
@@ -38,15 +37,14 @@ function LoginForm() {
       const res = await signInPassword(email, password);
       setIsLoading(false);
       if (res.success) {
-        setSuccess(true);
+        router.push(redirect);
       } else {
         setError(res.error || 'Invalid credentials');
       }
     }
+  };
 
-  }
-
-  if (success) {
+  if (magicLinkSent) {
     return (
       <Card className="max-w-md w-full text-center" padding="lg">
         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -62,16 +60,7 @@ function LoginForm() {
         <p className="text-sm text-gray-500">
           Didn&apos;t receive it?{' '}
           <button
-            onClick={() => setSuccess(false)}
-            className="text-indigo-600 font-medium hover:text-indigo-700"
-          >
-            Try again
-          </button>
-        </p>
-        <p className="text-sm text-gray-500">
-          Didn&apos;t receive it?{' '}
-          <button
-            onClick={() => setSuccess(false)}
+            onClick={() => setMagicLinkSent(false)}
             className="text-indigo-600 font-medium hover:text-indigo-700"
           >
             Try again

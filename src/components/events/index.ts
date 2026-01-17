@@ -6,3 +6,5 @@ export { RSVPButton } from './RSVPButton';
 export { GuestList, GuestAvatars } from './GuestList';
 
 export { EventForm } from './EventForm';
+
+export { ShareButton } from './ShareButton';
