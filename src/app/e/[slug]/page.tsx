@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { formatDate, formatTime } from '@/lib/utils';
 import { Avatar, Badge } from '@/components/ui';
-import { RSVPButton, GuestAvatars, ShareButton } from '@/components/events';
+import { RSVPButton, GuestAvatars, ShareButton, CancelEventButton } from '@/components/events';
 
 interface EventPageProps {
   params: Promise<{ slug: string }>;
@@ -231,6 +231,21 @@ export default async function EventPage({ params }: EventPageProps) {
                   </svg>
                   Edit Event
                 </Link>
+              )}
+              {event.canManage && event.status !== 'CANCELLED' && (
+                <CancelEventButton 
+                  eventId={event.id} 
+                  eventSlug={event.slug}
+                  isAlreadyCancelled={event.status === 'CANCELLED'}
+                />
+              )}
+              {event.status === 'CANCELLED' && (
+                <span className="inline-flex items-center gap-2 px-4 py-2 bg-red-100 text-red-800 rounded-lg">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Event Cancelled
+                </span>
               )}
             </div>
           </div>

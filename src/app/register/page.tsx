@@ -4,17 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/components/providers';
-import { Button, Input, Card } from '@/components/ui';
-
-function validatePassword(password: string) {
-  const errors: string[] = [];
-  if (password.length < 8) errors.push('At least 8 characters');
-  if (!/[A-Z]/.test(password)) errors.push('One uppercase letter');
-  if (!/[a-z]/.test(password)) errors.push('One lowercase letter');
-  if (!/\d/.test(password)) errors.push('One number');
-  if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>\/?]/.test(password)) errors.push('One special character');
-  return errors;
-}
+import { Button, Input, Card, PasswordStrengthIndicator } from '@/components/ui';
+import { isPasswordValid } from '@/lib/password-validation';
 
 export default function RegisterPage() {
   const { registerWithPassword } = useAuth();
@@ -27,18 +18,20 @@ export default function RegisterPage() {
   const [errors, setErrors] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const passwordValid = isPasswordValid(password);
+  const passwordsMatch = password === confirm;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors(null);
 
-    if (password !== confirm) {
+    if (!passwordsMatch) {
       setErrors('Passwords do not match');
       return;
     }
 
-    const passErrs = validatePassword(password);
-    if (passErrs.length) {
-      setErrors('Password must contain: ' + passErrs.join(', '));
+    if (!passwordValid) {
+      setErrors('Password does not meet all requirements');
       return;
     }
 
@@ -61,15 +54,32 @@ export default function RegisterPage() {
           <p className="text-gray-600">Use an email and a secure password to register</p>
         </div>
 
-        {errors && <div className="mb-4 text-red-700">{errors}</div>}
+        {errors && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700" role="alert">
+            {errors}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input label="Email address" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
           <Input label="Display name (optional)" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
-          <Input label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-          <Input label="Confirm password" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
+          
+          <div>
+            <Input label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <PasswordStrengthIndicator password={password} showRequirements />
+          </div>
 
-          <Button type="submit" className="w-full" size="lg" isLoading={isLoading} disabled={!email || !password || !confirm}>
+          <div>
+            <Input label="Confirm password" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
+            {confirm && !passwordsMatch && (
+              <p className="mt-1 text-sm text-red-600">Passwords do not match</p>
+            )}
+            {confirm && passwordsMatch && (
+              <p className="mt-1 text-sm text-green-600">Passwords match</p>
+            )}
+          </div>
+
+          <Button type="submit" className="w-full" size="lg" isLoading={isLoading} disabled={!email || !password || !confirm || !passwordValid || !passwordsMatch}>
             Create account
           </Button>
         </form>

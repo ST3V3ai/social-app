@@ -421,3 +421,46 @@ export async function sendPasswordResetEmail(email: string, resetToken: string):
     html,
   });
 }
+
+export async function sendEventAnnouncementEmail(
+  email: string,
+  eventTitle: string,
+  eventUrl: string,
+  announcementTitle: string,
+  announcementMessage: string,
+  organizerName: string
+): Promise<boolean> {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 24px;">${APP_NAME}</h1>
+        </div>
+        <div style="background: #fff; padding: 30px; border: 1px solid #e1e1e1; border-top: none; border-radius: 0 0 10px 10px;">
+          <h2 style="margin-top: 0;">📢 New Announcement</h2>
+          <p>${organizerName} posted an update for <strong>${eventTitle}</strong>:</p>
+          <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea;">
+            ${announcementTitle ? `<h3 style="margin: 0 0 10px 0;">${announcementTitle}</h3>` : ''}
+            <p style="margin: 0; white-space: pre-wrap;">${announcementMessage}</p>
+          </div>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${eventUrl}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">
+              View Event
+            </a>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: `📢 ${eventTitle}: ${announcementTitle || 'New Announcement'}`,
+    html,
+  });
+}

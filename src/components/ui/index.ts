@@ -14,3 +14,7 @@ export { Avatar } from './Avatar';
 export { Badge } from './Badge';
 
 export { TimezoneSelect } from './TimezoneSelect';
+
+export { PasswordStrengthIndicator } from './PasswordStrengthIndicator';
+
+export { PublicEventConfirmationModal } from './PublicEventConfirmationModal';

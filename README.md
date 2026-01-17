@@ -197,6 +197,39 @@ npm run dev
 ```
 This starts the Next.js dev server with hot reload on http://localhost:3000
 
+#### Ensure server binds to port 3000
+
+By default the dev server listens on port 3000. If that port is already in use, Next will auto-select a different port (e.g. 3001). To avoid surprises and ensure the app always runs on port 3000 during development, follow these steps:
+
+- Start explicitly on port 3000 (Linux/macOS):
+
+```bash
+# from the `gather` folder
+PORT=3000 npm run dev
+```
+
+- If port 3000 is in use, find and stop the owning process (only stop processes you recognize):
+
+```bash
+# show the process using port 3000
+lsof -i :3000 -sTCP:LISTEN -Pn
+
+# if it's a stray local Next/Node process owned by you, stop it safely
+# (replace <PID> with the process id from the previous command)
+# make sure you inspect the command before killing
+kill <PID>
+```
+
+- Alternative safe one-liner to locate common dev servers you started locally (will only show processes matching "node"/"next"):
+
+```bash
+ps aux | grep -E "node .*next|next dev|next start" | grep -v grep
+# inspect the output; then kill the PID(s) you recognize
+kill <PID>
+```
+
+Note: Avoid killing system processes or services you do not recognize. If a non-local process occupies port 3000 (for example, a Docker container or another service), stop that service with its proper tooling (docker, systemctl, etc.).
+
 #### Production Mode
 ```bash
 # Build the application first

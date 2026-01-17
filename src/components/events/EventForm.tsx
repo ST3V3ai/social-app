@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Input, Textarea, TimezoneSelect } from '@/components/ui';
+import { Button, Input, Textarea, TimezoneSelect, PublicEventConfirmationModal } from '@/components/ui';
 
 interface EventFormData {
   title: string;
@@ -61,7 +61,7 @@ export function EventForm({
     isOnline: initialData?.isOnline ?? false,
     locationString: initialData?.locationString || '',
     onlineUrl: initialData?.onlineUrl || '',
-    privacy: initialData?.privacy || 'PUBLIC',
+    privacy: initialData?.privacy || 'PRIVATE',
     category: initialData?.category || '',
     capacity: initialData?.capacity ?? null,
     enableWaitlist: initialData?.enableWaitlist ?? true,
@@ -71,12 +71,34 @@ export function EventForm({
   });
 
   const [errors, setErrors] = useState<Partial<Record<keyof EventFormData, string>>>({});
+  const [showPublicConfirm, setShowPublicConfirm] = useState(false);
+  const [pendingPrivacyChange, setPendingPrivacyChange] = useState(false);
 
   const updateField = <K extends keyof EventFormData>(field: K, value: EventFormData[K]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
+  };
+
+  const handlePrivacyChange = (value: 'PUBLIC' | 'UNLISTED' | 'PRIVATE') => {
+    if (value === 'PUBLIC' && formData.privacy !== 'PUBLIC') {
+      setPendingPrivacyChange(true);
+      setShowPublicConfirm(true);
+    } else {
+      updateField('privacy', value);
+    }
+  };
+
+  const confirmPublicPrivacy = () => {
+    updateField('privacy', 'PUBLIC');
+    setShowPublicConfirm(false);
+    setPendingPrivacyChange(false);
+  };
+
+  const cancelPublicPrivacy = () => {
+    setShowPublicConfirm(false);
+    setPendingPrivacyChange(false);
   };
 
   const validate = (): boolean => {
@@ -295,7 +317,7 @@ export function EventForm({
               <input
                 type="radio"
                 checked={formData.privacy === option}
-                onChange={() => updateField('privacy', option)}
+                onChange={() => handlePrivacyChange(option)}
                 className="w-4 h-4 mt-0.5 text-indigo-600"
               />
               <div>
@@ -312,6 +334,13 @@ export function EventForm({
           ))}
         </div>
       </div>
+
+      {/* Public Event Confirmation Modal */}
+      <PublicEventConfirmationModal
+        isOpen={showPublicConfirm}
+        onConfirm={confirmPublicPrivacy}
+        onCancel={cancelPublicPrivacy}
+      />
 
       {/* Capacity & Options */}
       <div className="space-y-4">

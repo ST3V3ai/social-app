@@ -1,18 +1,16 @@
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import {
-  withOptionalAuth,
+  withAuth,
   successResponse,
-  notFoundError,
   internalError,
   AuthenticatedRequest,
 } from '@/lib/api';
-import { NextRequest } from 'next/server';
 
-// GET /api/users/[id]/events - Get user's hosted events and events they've RSVPed to
-async function getHandler(req: NextRequest, context?: { params: Promise<Record<string, string>> }) {
+// GET /api/users/me/events - Get current user's events (hosted and RSVPed)
+async function getHandler(req: NextRequest) {
   try {
-    const { id } = await context!.params;
-    const authUser = (req as AuthenticatedRequest).user;
+    const user = (req as AuthenticatedRequest).user;
     const { searchParams } = new URL(req.url);
     
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
@@ -21,25 +19,11 @@ async function getHandler(req: NextRequest, context?: { params: Promise<Record<s
     const type = searchParams.get('type') || 'upcoming'; // upcoming, past, all
     const source = searchParams.get('source'); // hosting, attending, all (default)
 
-    const user = await prisma.user.findFirst({
-      where: {
-        OR: [{ id }, { profile: { username: id } }],
-      },
-    });
-
-    if (!user) {
-      return notFoundError('User not found');
-    }
-
-    const isOwn = authUser?.id === user.id;
-
     // Build where clause
     interface EventWhere {
       deletedAt: null;
       OR?: Array<{ organizerId?: string; rsvps?: { some: { userId: string; status: { in: ('GOING' | 'MAYBE')[] } } } }>;
       organizerId?: string;
-      status?: 'PUBLISHED';
-      privacy?: 'PUBLIC';
       startTime?: { gte?: Date; lt?: Date };
     }
 
@@ -47,27 +31,19 @@ async function getHandler(req: NextRequest, context?: { params: Promise<Record<s
       deletedAt: null,
     };
 
-    // Determine what events to include based on source param and ownership
-    if (isOwn) {
-      // User viewing their own events - include both hosted and attended
-      if (source === 'hosting') {
-        where.organizerId = user.id;
-      } else if (source === 'attending') {
-        where.OR = [
-          { rsvps: { some: { userId: user.id, status: { in: ['GOING', 'MAYBE'] } } } },
-        ];
-      } else {
-        // Default: both hosted and RSVPed events
-        where.OR = [
-          { organizerId: user.id },
-          { rsvps: { some: { userId: user.id, status: { in: ['GOING', 'MAYBE'] } } } },
-        ];
-      }
-    } else {
-      // Other users viewing - only show public published events hosted by user
+    // Determine what events to include
+    if (source === 'hosting') {
       where.organizerId = user.id;
-      where.status = 'PUBLISHED';
-      where.privacy = 'PUBLIC';
+    } else if (source === 'attending') {
+      where.OR = [
+        { rsvps: { some: { userId: user.id, status: { in: ['GOING', 'MAYBE'] } } } },
+      ];
+    } else {
+      // Default: both hosted and RSVPed events
+      where.OR = [
+        { organizerId: user.id },
+        { rsvps: { some: { userId: user.id, status: { in: ['GOING', 'MAYBE'] } } } },
+      ];
     }
 
     // Filter by time
@@ -147,9 +123,9 @@ async function getHandler(req: NextRequest, context?: { params: Promise<Record<s
       },
     });
   } catch (error) {
-    console.error('[Users] Events error:', error);
+    console.error('[Users] Me Events error:', error);
     return internalError();
   }
 }
 
-export const GET = withOptionalAuth(getHandler);
+export const GET = withAuth(getHandler);

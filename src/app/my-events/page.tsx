@@ -40,13 +40,16 @@ interface EventsResponse {
 }
 
 async function fetchMyEvents(type: string, page: number): Promise<EventsResponse> {
-  const res = await fetch(`/api/users/me/events?type=${type}&page=${page}&limit=12`);
+  const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+
+  const res = await fetch(`/api/users/me/events?type=${type}&page=${page}&limit=12`, { headers });
   if (!res.ok) {
-    // If not found, try the current user's events endpoint
-    const meRes = await fetch('/api/auth/me');
+    // If not found or unauthorized, try the current user's events endpoint
+    const meRes = await fetch('/api/auth/me', { headers });
     if (!meRes.ok) throw new Error('Not authenticated');
     const userData = await meRes.json();
-    const eventsRes = await fetch(`/api/users/${userData.data.id}/events?type=${type}&page=${page}&limit=12`);
+    const eventsRes = await fetch(`/api/users/${userData.data.id}/events?type=${type}&page=${page}&limit=12`, { headers });
     if (!eventsRes.ok) throw new Error('Failed to fetch events');
     return eventsRes.json();
   }
