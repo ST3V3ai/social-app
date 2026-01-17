@@ -13,19 +13,27 @@ import {
   AuthenticatedRequest,
 } from '@/lib/api';
 
+// Check if a string looks like a UUID
+function isUUID(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+}
+
 // POST /api/events/[id]/rsvp - Create or update RSVP
 async function postHandler(req: AuthenticatedRequest, context?: { params: Promise<Record<string, string>> }) {
   try {
-    const { id: eventId } = await context!.params;
+    const { id: idOrSlug } = await context!.params;
 
-    // Get event
-    const event = await prisma.event.findUnique({
-      where: { id: eventId },
+    // Get event by ID or slug
+    const event = await prisma.event.findFirst({
+      where: isUUID(idOrSlug) ? { id: idOrSlug } : { slug: idOrSlug },
     });
 
     if (!event || event.deletedAt) {
       return notFoundError('Event not found');
     }
+
+    const eventId = event.id;
 
     // Check if event has ended
     if (event.startTime < new Date() && event.status !== 'PUBLISHED') {
@@ -178,7 +186,19 @@ async function postHandler(req: AuthenticatedRequest, context?: { params: Promis
 // GET /api/events/[id]/rsvp - Get user's RSVP
 async function getHandler(req: AuthenticatedRequest, context?: { params: Promise<Record<string, string>> }) {
   try {
-    const { id: eventId } = await context!.params;
+    const { id: idOrSlug } = await context!.params;
+
+    // Get event by ID or slug
+    const event = await prisma.event.findFirst({
+      where: isUUID(idOrSlug) ? { id: idOrSlug } : { slug: idOrSlug },
+      select: { id: true },
+    });
+
+    if (!event) {
+      return notFoundError('Event not found');
+    }
+
+    const eventId = event.id;
 
     const rsvp = await prisma.rsvp.findFirst({
       where: {
@@ -224,7 +244,19 @@ async function getHandler(req: AuthenticatedRequest, context?: { params: Promise
 // DELETE /api/events/[id]/rsvp - Cancel RSVP
 async function deleteHandler(req: AuthenticatedRequest, context?: { params: Promise<Record<string, string>> }) {
   try {
-    const { id: eventId } = await context!.params;
+    const { id: idOrSlug } = await context!.params;
+
+    // Get event by ID or slug
+    const event = await prisma.event.findFirst({
+      where: isUUID(idOrSlug) ? { id: idOrSlug } : { slug: idOrSlug },
+      select: { id: true, enableWaitlist: true },
+    });
+
+    if (!event) {
+      return notFoundError('Event not found');
+    }
+
+    const eventId = event.id;
 
     const rsvp = await prisma.rsvp.findFirst({
       where: {
@@ -244,25 +276,22 @@ async function deleteHandler(req: AuthenticatedRequest, context?: { params: Prom
     });
 
     // If was going, promote from waitlist
-    if (wasGoing) {
-      const event = await prisma.event.findUnique({ where: { id: eventId } });
-      if (event?.enableWaitlist) {
-        const nextInLine = await prisma.rsvp.findFirst({
-          where: {
-            eventId,
-            status: 'WAITLIST',
-          },
-          orderBy: { createdAt: 'asc' },
+    if (wasGoing && event.enableWaitlist) {
+      const nextInLine = await prisma.rsvp.findFirst({
+        where: {
+          eventId,
+          status: 'WAITLIST',
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      if (nextInLine) {
+        await prisma.rsvp.update({
+          where: { id: nextInLine.id },
+          data: { status: 'GOING' },
         });
 
-        if (nextInLine) {
-          await prisma.rsvp.update({
-            where: { id: nextInLine.id },
-            data: { status: 'GOING' },
-          });
-
-          // TODO: Send notification to promoted user
-        }
+        // TODO: Send notification to promoted user
       }
     }
 

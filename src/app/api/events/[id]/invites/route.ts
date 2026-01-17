@@ -16,20 +16,28 @@ import {
   AuthenticatedRequest,
 } from '@/lib/api';
 
+// Check if a string looks like a UUID
+function isUUID(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+}
+
 // POST /api/events/[id]/invites - Send invites
 async function postHandler(req: AuthenticatedRequest, context?: { params: Promise<Record<string, string>> }) {
   try {
-    const { id: eventId } = await context!.params;
+    const { id: idOrSlug } = await context!.params;
 
     // Get event and check permission
-    const event = await prisma.event.findUnique({
-      where: { id: eventId },
+    const event = await prisma.event.findFirst({
+      where: isUUID(idOrSlug) ? { id: idOrSlug } : { slug: idOrSlug },
       include: { cohosts: true },
     });
 
     if (!event || event.deletedAt) {
       return notFoundError('Event not found');
     }
+
+    const eventId = event.id;
 
     const isOrganizer = event.organizerId === req.user.id;
     const isCohost = event.cohosts.some((c: { userId: string }) => c.userId === req.user.id);
@@ -177,16 +185,18 @@ async function postHandler(req: AuthenticatedRequest, context?: { params: Promis
 // GET /api/events/[id]/invites - List invites
 async function getHandler(req: AuthenticatedRequest, context?: { params: Promise<Record<string, string>> }) {
   try {
-    const { id: eventId } = await context!.params;
+    const { id: idOrSlug } = await context!.params;
 
-    const event = await prisma.event.findUnique({
-      where: { id: eventId },
+    const event = await prisma.event.findFirst({
+      where: isUUID(idOrSlug) ? { id: idOrSlug } : { slug: idOrSlug },
       include: { cohosts: true },
     });
 
     if (!event || event.deletedAt) {
       return notFoundError('Event not found');
     }
+
+    const eventId = event.id;
 
     const isOrganizer = event.organizerId === req.user.id;
     const isCohost = event.cohosts.some((c: { userId: string }) => c.userId === req.user.id);

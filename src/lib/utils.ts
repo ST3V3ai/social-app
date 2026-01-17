@@ -95,6 +95,12 @@ export function randomId(length: number = 8): string {
   return Math.random().toString(36).substring(2, 2 + length);
 }
 
+export function getIpAddress(req: { headers: { get(name: string): string | null } }): string | null {
+  return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+         req.headers.get('x-real-ip') || 
+         null;
+}
+
 export function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }

@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/db';
 import { updateEventSchema } from '@/lib/validations';
+import { sendEventUpdatedEmail, sendEventCancelledEmail } from '@/lib/email';
+import { formatDateTime } from '@/lib/utils';
 import {
   withAuth,
   withOptionalAuth,
@@ -18,30 +20,37 @@ interface RouteContext {
 }
 
 // Check if user can manage event
-async function canManageEvent(eventId: string, userId: string): Promise<boolean> {
-  const event = await prisma.event.findUnique({
-    where: { id: eventId },
+async function canManageEvent(idOrSlug: string, userId: string): Promise<{ allowed: boolean; eventId?: string }> {
+  const event = await prisma.event.findFirst({
+    where: isUUID(idOrSlug) ? { id: idOrSlug } : { slug: idOrSlug },
     include: {
       cohosts: true,
     },
   });
 
-  if (!event) return false;
-  if (event.organizerId === userId) return true;
-  if (event.cohosts.some((c: { userId: string }) => c.userId === userId)) return true;
+  if (!event) return { allowed: false };
+  if (event.organizerId === userId) return { allowed: true, eventId: event.id };
+  if (event.cohosts.some((c: { userId: string }) => c.userId === userId)) return { allowed: true, eventId: event.id };
 
-  return false;
+  return { allowed: false };
 }
 
-// GET /api/events/[id] - Get event by ID
+// Check if a string looks like a UUID
+function isUUID(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+}
+
+// GET /api/events/[id] - Get event by ID or slug
 async function getHandler(req: NextRequest, context?: { params: Promise<Record<string, string>> }) {
 
   try {
     const { id } = await context!.params;
     const authUser = (req as AuthenticatedRequest).user;
 
-    const event = await prisma.event.findUnique({
-      where: { id },
+    // Support lookup by either UUID or slug
+    const event = await prisma.event.findFirst({
+      where: isUUID(id) ? { id } : { slug: id },
       include: {
         organizer: {
           include: {
@@ -91,11 +100,11 @@ async function getHandler(req: NextRequest, context?: { params: Promise<Record<s
       // Check if user has an invite or RSVP
       if (authUser) {
         const hasAccess = await prisma.rsvp.findFirst({
-          where: { eventId: id, userId: authUser.id },
+          where: { eventId: event.id, userId: authUser.id },
         });
         if (!hasAccess) {
           const hasInvite = await prisma.invite.findFirst({
-            where: { eventId: id, userId: authUser.id },
+            where: { eventId: event.id, userId: authUser.id },
           });
           if (!hasInvite) {
             return notFoundError('Event not found');
@@ -108,14 +117,14 @@ async function getHandler(req: NextRequest, context?: { params: Promise<Record<s
 
     // Increment view count
     await prisma.event.update({
-      where: { id },
+      where: { id: event.id },
       data: { viewCount: { increment: 1 } },
     });
 
     // Get RSVP counts
     const rsvpCounts = await prisma.rsvp.groupBy({
       by: ['status'],
-      where: { eventId: id },
+      where: { eventId: event.id },
       _count: true,
     });
 
@@ -131,7 +140,7 @@ async function getHandler(req: NextRequest, context?: { params: Promise<Record<s
     let userRsvp = null;
     if (authUser) {
       const rsvp = await prisma.rsvp.findFirst({
-        where: { eventId: id, userId: authUser.id },
+        where: { eventId: event.id, userId: authUser.id },
       });
       if (rsvp) {
         userRsvp = {
@@ -208,11 +217,22 @@ async function getHandler(req: NextRequest, context?: { params: Promise<Record<s
 // PATCH /api/events/[id] - Update event
 async function patchHandler(req: AuthenticatedRequest, context?: { params: Promise<Record<string, string>> }) {
   try {
-    const { id } = await context!.params;
+    const { id: idOrSlug } = await context!.params;
 
     // Check if user can manage this event
-    if (!(await canManageEvent(id, req.user.id))) {
+    const manageCheck = await canManageEvent(idOrSlug, req.user.id);
+    if (!manageCheck.allowed || !manageCheck.eventId) {
       return forbiddenError('You do not have permission to edit this event');
+    }
+    const eventId = manageCheck.eventId;
+
+    // Get current event to compare for changes
+    const currentEvent = await prisma.event.findUnique({
+      where: { id: eventId },
+    });
+
+    if (!currentEvent) {
+      return notFoundError('Event not found');
     }
 
     const body = await parseBody(req);
@@ -259,9 +279,62 @@ async function patchHandler(req: AuthenticatedRequest, context?: { params: Promi
     if (data.coverImageUrl !== undefined) updateData.coverImageUrl = data.coverImageUrl;
 
     const event = await prisma.event.update({
-      where: { id },
+      where: { id: eventId },
       data: updateData,
     });
+
+    // Check for important changes (time, location) and notify attendees
+    if (currentEvent.status === 'PUBLISHED') {
+      const changes: { field: string; oldValue: string; newValue: string }[] = [];
+
+      if (data.startTime && new Date(data.startTime).getTime() !== currentEvent.startTime.getTime()) {
+        changes.push({
+          field: 'Date & Time',
+          oldValue: formatDateTime(currentEvent.startTime),
+          newValue: formatDateTime(new Date(data.startTime)),
+        });
+      }
+
+      if (data.location?.address && data.location.address !== currentEvent.locationAddress) {
+        changes.push({
+          field: 'Location',
+          oldValue: currentEvent.locationAddress || 'Not specified',
+          newValue: data.location.address,
+        });
+      }
+
+      if (data.isOnline !== undefined && data.isOnline !== currentEvent.isOnline) {
+        changes.push({
+          field: 'Event Type',
+          oldValue: currentEvent.isOnline ? 'Online' : 'In-person',
+          newValue: data.isOnline ? 'Online' : 'In-person',
+        });
+      }
+
+      // If there are important changes, notify attendees
+      if (changes.length > 0) {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const eventUrl = `${appUrl}/e/${event.slug}`;
+
+        // Get all attendees with GOING or MAYBE status
+        const rsvps = await prisma.rsvp.findMany({
+          where: {
+            eventId,
+            status: { in: ['GOING', 'MAYBE'] },
+          },
+          include: {
+            user: { select: { email: true } },
+          },
+        });
+
+        // Send emails in background (don't await)
+        for (const rsvp of rsvps) {
+          sendEventUpdatedEmail(rsvp.user.email, event.title, eventUrl, changes).catch(err => {
+            console.error(`Failed to send update email to ${rsvp.user.email}:`, err);
+          });
+        }
+      }
+    }
 
     return successResponse({
       id: event.id,
@@ -278,11 +351,18 @@ async function patchHandler(req: AuthenticatedRequest, context?: { params: Promi
 // DELETE /api/events/[id] - Delete event (soft delete)
 async function deleteHandler(req: AuthenticatedRequest, context?: { params: Promise<Record<string, string>> }) {
   try {
-    const { id } = await context!.params;
+    const { id: idOrSlug } = await context!.params;
 
-    // Only organizer can delete
-    const event = await prisma.event.findUnique({
-      where: { id },
+    // Look up event by ID or slug
+    const event = await prisma.event.findFirst({
+      where: isUUID(idOrSlug) ? { id: idOrSlug } : { slug: idOrSlug },
+      include: {
+        organizer: {
+          include: {
+            profile: { select: { displayName: true } },
+          },
+        },
+      },
     });
 
     if (!event || event.deletedAt) {
@@ -293,10 +373,33 @@ async function deleteHandler(req: AuthenticatedRequest, context?: { params: Prom
       return forbiddenError('Only the organizer can delete this event');
     }
 
+    // Get attendees before deleting (for notification)
+    const rsvps = await prisma.rsvp.findMany({
+      where: {
+        eventId: event.id,
+        status: { in: ['GOING', 'MAYBE'] },
+      },
+      include: {
+        user: { select: { email: true } },
+      },
+    });
+
     await prisma.event.update({
-      where: { id },
+      where: { id: event.id },
       data: { deletedAt: new Date() },
     });
+
+    // Notify attendees of cancellation
+    if (event.status === 'PUBLISHED' && rsvps.length > 0) {
+      const organizerName = event.organizer.profile?.displayName || 'The organizer';
+      const eventDate = formatDateTime(event.startTime);
+
+      for (const rsvp of rsvps) {
+        sendEventCancelledEmail(rsvp.user.email, event.title, eventDate, organizerName).catch(err => {
+          console.error(`Failed to send cancellation email to ${rsvp.user.email}:`, err);
+        });
+      }
+    }
 
     return successResponse({ message: 'Event deleted' });
   } catch (error) {

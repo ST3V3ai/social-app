@@ -10,6 +10,7 @@ const config = {
   setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
   testTimeout: 30000,
   verbose: true,
+  setupFiles: ['<rootDir>/tests/jest-setup.js'],
 };
 
 module.exports = config;

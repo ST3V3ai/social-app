@@ -1,8 +1,22 @@
 // Test setup and utilities
 import { prisma } from '@/lib/db';
+import { redis } from '@/lib/redis';
 
 // Base URL for API tests
 export const BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:3000';
+
+// Clear rate limits from Redis to prevent 429 errors during tests
+export async function clearRateLimits() {
+  try {
+    const keys = await redis.keys('rl:*');
+    if (keys.length > 0) {
+      await redis.del(...keys);
+      console.log(`Cleared ${keys.length} rate limit keys`);
+    }
+  } catch (error) {
+    console.warn('Could not clear rate limits:', error instanceof Error ? error.message : String(error));
+  }
+}
 
 // Clean up database before/after tests if needed
 export async function cleanupTestData() {

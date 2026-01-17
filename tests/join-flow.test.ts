@@ -10,15 +10,17 @@
  * 6. User is authenticated (not as new user)
  */
 
-import { apiRequest, testEmail, prisma, BASE_URL } from './setup';
+import { apiRequest, testEmail, prisma, BASE_URL, clearRateLimits } from './setup';
 import { hashToken } from '@/lib/auth';
 
 describe('Magic Link Join Flow (E2E)', () => {
   let testUserEmail: string;
   let magicLinkToken: string;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     testUserEmail = testEmail('join-flow');
+    // Clear rate limits to prevent 429 errors
+    await clearRateLimits();
   });
 
   afterAll(async () => {

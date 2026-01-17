@@ -13,20 +13,28 @@ import {
 } from '@/lib/api';
 import { NextRequest } from 'next/server';
 
+// Check if a string looks like a UUID
+function isUUID(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+}
+
 // GET /api/events/[id]/posts - List posts for an event
 async function getHandler(req: NextRequest, context?: { params: Promise<Record<string, string>> }) {
   try {
-    const { id: eventId } = await context!.params;
+    const { id: idOrSlug } = await context!.params;
     const authUser = (req as AuthenticatedRequest).user;
 
-    const event = await prisma.event.findUnique({
-      where: { id: eventId },
+    const event = await prisma.event.findFirst({
+      where: isUUID(idOrSlug) ? { id: idOrSlug } : { slug: idOrSlug },
       include: { cohosts: true },
     });
 
     if (!event || event.deletedAt) {
       return notFoundError('Event not found');
     }
+
+    const eventId = event.id;
 
     // Check if user can view posts (must have RSVP'd or be organizer)
     const isOrganizer = authUser?.id === event.organizerId;
@@ -109,16 +117,18 @@ async function getHandler(req: NextRequest, context?: { params: Promise<Record<s
 // POST /api/events/[id]/posts - Create a post
 async function postHandler(req: AuthenticatedRequest, context?: { params: Promise<Record<string, string>> }) {
   try {
-    const { id: eventId } = await context!.params;
+    const { id: idOrSlug } = await context!.params;
 
-    const event = await prisma.event.findUnique({
-      where: { id: eventId },
+    const event = await prisma.event.findFirst({
+      where: isUUID(idOrSlug) ? { id: idOrSlug } : { slug: idOrSlug },
       include: { cohosts: true },
     });
 
     if (!event || event.deletedAt) {
       return notFoundError('Event not found');
     }
+
+    const eventId = event.id;
 
     // Only organizer and cohosts can post
     const isOrganizer = event.organizerId === req.user.id;

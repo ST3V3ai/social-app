@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 import { prisma } from './db';
 import { Prisma } from '@prisma/client';
 
@@ -46,6 +47,41 @@ export function generateRandomToken(bytes: number = 32): string {
 export function hashToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
+
+// ============ Password Utilities ============
+
+export async function hashPassword(password: string): Promise<string> {
+  const saltRounds = 12;
+  return await bcrypt.hash(password, saltRounds);
+}
+
+export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  return await bcrypt.compare(password, hash);
+}
+
+export function validatePassword(password: string): { isValid: boolean; errors: string[] } {
+  const errors: string[] = [];
+  
+  if (password.length < 8) {
+    errors.push('Password must be at least 8 characters long');
+  }
+  if (!/[A-Z]/.test(password)) {
+    errors.push('Password must contain at least one uppercase letter');
+  }
+  if (!/[a-z]/.test(password)) {
+    errors.push('Password must contain at least one lowercase letter');
+  }
+  if (!/\d/.test(password)) {
+    errors.push('Password must contain at least one number');
+  }
+  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+    errors.push('Password must contain at least one special character');
+  }
+  
+  return { isValid: errors.length === 0, errors };
+}
+
+// ============ Token Generation ============
 
 export function generateAccessToken(user: Pick<User, 'id' | 'email' | 'role'>): string {
   const payload: JWTPayload = {
@@ -180,6 +216,48 @@ export async function verifyMagicLink(token: string): Promise<{
   return { user: newUser, isNewUser: true };
 }
 
+// ============ Password Reset ============
+
+export async function createPasswordResetToken(userId: string): Promise<string> {
+  const token = generateRandomToken();
+  const tokenHash = hashToken(token);
+  const expiresAt = new Date(Date.now() + MAGIC_LINK_EXPIRY_MINUTES * 60 * 1000); // Same expiry as magic links
+
+  await prisma.passwordResetToken.create({
+    data: {
+      userId,
+      tokenHash,
+      expiresAt,
+    },
+  });
+
+  return token;
+}
+
+export async function verifyPasswordResetToken(token: string): Promise<{ userId: string } | null> {
+  const tokenHash = hashToken(token);
+
+  const resetToken = await prisma.passwordResetToken.findFirst({
+    where: {
+      tokenHash,
+      expiresAt: { gt: new Date() },
+      usedAt: null,
+    },
+  });
+
+  if (!resetToken) {
+    return null;
+  }
+
+  // Mark token as used
+  await prisma.passwordResetToken.update({
+    where: { id: resetToken.id },
+    data: { usedAt: new Date() },
+  });
+
+  return { userId: resetToken.userId };
+}
+
 // ============ Sessions ============
 
 export async function createSession(
@@ -280,6 +358,18 @@ export async function getUserFromToken(accessToken: string): Promise<AuthUser | 
   });
 
   if (!user || user.status !== 'ACTIVE') {
+    return null;
+  }
+
+  // Verify user has at least one active session (security: sessions can be invalidated)
+  const activeSession = await prisma.session.findFirst({
+    where: {
+      userId: user.id,
+      expiresAt: { gt: new Date() },
+    },
+  });
+
+  if (!activeSession) {
     return null;
   }
 

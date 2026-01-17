@@ -8,13 +8,19 @@ import {
   AuthenticatedRequest,
 } from '@/lib/api';
 
+// Check if a string looks like a UUID
+function isUUID(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+}
+
 // POST /api/events/[id]/publish - Publish event
 async function handler(req: AuthenticatedRequest, context?: { params: Promise<Record<string, string>> }) {
   try {
-    const { id } = await context!.params;
+    const { id: idOrSlug } = await context!.params;
 
-    const event = await prisma.event.findUnique({
-      where: { id },
+    const event = await prisma.event.findFirst({
+      where: isUUID(idOrSlug) ? { id: idOrSlug } : { slug: idOrSlug },
       include: { cohosts: true },
     });
 
@@ -42,7 +48,7 @@ async function handler(req: AuthenticatedRequest, context?: { params: Promise<Re
 
     // Publish the event
     const updated = await prisma.event.update({
-      where: { id },
+      where: { id: event.id },
       data: {
         status: 'PUBLISHED',
         publishedAt: new Date(),

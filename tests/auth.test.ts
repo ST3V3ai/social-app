@@ -10,7 +10,7 @@
  * 6. Logout
  */
 
-import { apiRequest, testEmail, prisma, BASE_URL } from './setup';
+import { apiRequest, testEmail, prisma, BASE_URL, clearRateLimits } from './setup';
 import { hashToken } from '@/lib/auth';
 
 describe('Authentication API', () => {
@@ -18,8 +18,10 @@ describe('Authentication API', () => {
   let accessToken: string;
   let refreshToken: string;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     testUserEmail = testEmail('auth');
+    // Clear rate limits to prevent 429 errors
+    await clearRateLimits();
   });
 
   afterAll(async () => {

@@ -15,6 +15,33 @@ export const magicLinkVerifySchema = z.object({
   token: z.string().min(1, 'Token is required'),
 });
 
+export const registerSchema = z.object({
+  email: emailSchema,
+  password: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .max(128, 'Password must be less than 128 characters'),
+  displayName: z.string()
+    .min(1, 'Display name is required')
+    .max(100, 'Display name must be less than 100 characters')
+    .optional(),
+});
+
+export const signinSchema = z.object({
+  email: emailSchema,
+  password: z.string().min(1, 'Password is required'),
+});
+
+export const forgotPasswordSchema = z.object({
+  email: emailSchema,
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, 'Token is required'),
+  password: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .max(128, 'Password must be less than 128 characters'),
+});
+
 // ============ Profile Schemas ============
 
 export const updateProfileSchema = z.object({
