@@ -15,6 +15,8 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string) => Promise<{ success: boolean; error?: string }>;
+  signInPassword: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  registerWithPassword: (email: string, password: string, displayName?: string) => Promise<{ success: boolean; error?: string }>;
   verifyMagicLink: (token: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -117,6 +119,52 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
+  const signInPassword = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const response = await fetch('/api/auth/signin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        localStorage.setItem('accessToken', data.data.accessToken);
+        localStorage.setItem('refreshToken', data.data.refreshToken);
+        await refreshUser();
+        return { success: true };
+      }
+
+      const data = await response.json();
+      return { success: false, error: data.error?.message || 'Invalid credentials' };
+    } catch (e) {
+      return { success: false, error: 'Network error' };
+    }
+  };
+
+  const registerWithPassword = async (email: string, password: string, displayName?: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, displayName }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        localStorage.setItem('accessToken', data.data.accessToken);
+        localStorage.setItem('refreshToken', data.data.refreshToken);
+        await refreshUser();
+        return { success: true };
+      }
+
+      const data = await response.json();
+      return { success: false, error: data.error?.message || 'Registration failed' };
+    } catch (e) {
+      return { success: false, error: 'Network error' };
+    }
+  };
+
   const verifyMagicLink = async (token: string): Promise<{ success: boolean; error?: string }> => {
     try {
       const response = await fetch('/api/auth/verify', {
@@ -169,6 +217,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         isLoading,
         isAuthenticated: !!user,
         login,
+        signInPassword,
+        registerWithPassword,
         verifyMagicLink,
         logout,
         refreshUser,

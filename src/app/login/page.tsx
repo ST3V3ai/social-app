@@ -9,11 +9,14 @@ import { Button, Input, Card } from '@/components/ui';
 function LoginForm() {
   const searchParams = useSearchParams();
   const { login } = useAuth();
+  const { signInPassword } = useAuth();
   
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [mode, setMode] = useState<'magic' | 'password'>('magic');
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const redirect = searchParams.get('redirect') || '/';
@@ -23,15 +26,25 @@ function LoginForm() {
     setError('');
     setIsLoading(true);
 
-    const result = await login(email);
-    setIsLoading(false);
-
-    if (result.success) {
-      setSuccess(true);
+    if (mode === 'magic') {
+      const result = await login(email);
+      setIsLoading(false);
+      if (result.success) {
+        setSuccess(true);
+      } else {
+        setError(result.error || 'Something went wrong');
+      }
     } else {
-      setError(result.error || 'Something went wrong');
+      const res = await signInPassword(email, password);
+      setIsLoading(false);
+      if (res.success) {
+        setSuccess(true);
+      } else {
+        setError(res.error || 'Invalid credentials');
+      }
     }
-  };
+
+  }
 
   if (success) {
     return (
@@ -45,6 +58,15 @@ function LoginForm() {
         <p className="text-gray-600 mb-6">
           We&apos;ve sent a magic link to <strong>{email}</strong>. 
           Click the link in the email to sign in.
+        </p>
+        <p className="text-sm text-gray-500">
+          Didn&apos;t receive it?{' '}
+          <button
+            onClick={() => setSuccess(false)}
+            className="text-indigo-600 font-medium hover:text-indigo-700"
+          >
+            Try again
+          </button>
         </p>
         <p className="text-sm text-gray-500">
           Didn&apos;t receive it?{' '}
@@ -73,28 +95,47 @@ function LoginForm() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <Input
-          label="Email address"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
-          required
-          autoFocus
-          error={error}
-        />
+      <div className="mb-4">
+        <div className="flex gap-2 justify-center mb-4">
+          <button type="button" onClick={() => setMode('magic')} className={`px-4 py-2 rounded ${mode === 'magic' ? 'bg-indigo-600 text-white' : 'bg-white border'}`}>
+            Magic link
+          </button>
+          <button type="button" onClick={() => setMode('password')} className={`px-4 py-2 rounded ${mode === 'password' ? 'bg-indigo-600 text-white' : 'bg-white border'}`}>
+            Sign in
+          </button>
+        </div>
 
-        <Button
-          type="submit"
-          className="w-full"
-          size="lg"
-          isLoading={isLoading}
-          disabled={!email}
-        >
-          Continue with Email
-        </Button>
-      </form>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            label="Email address"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            required
+            autoFocus
+            error={error}
+          />
+
+          {mode === 'password' && (
+            <Input label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          )}
+
+          <Button
+            type="submit"
+            className="w-full"
+            size="lg"
+            isLoading={isLoading}
+            disabled={!email || (mode === 'password' && !password)}
+          >
+            {mode === 'magic' ? 'Continue with Email' : 'Sign in'}
+          </Button>
+        </form>
+
+        <div className="mt-4 text-center text-sm">
+          <Link href="/register" className="text-indigo-600 hover:text-indigo-700">Create account</Link>
+        </div>
+      </div>
 
       <div className="mt-6 text-center text-sm text-gray-500">
         <p>
