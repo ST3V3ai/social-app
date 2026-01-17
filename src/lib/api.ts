@@ -85,7 +85,14 @@ export function withAuth(handler: AuthenticatedApiHandler): ApiHandler {
       return unauthorizedError('Missing authorization token');
     }
 
-    const user = await getUserFromToken(token);
+    let user;
+    try {
+      user = await getUserFromToken(token);
+    } catch (error) {
+      console.error('[Auth] getUserFromToken error:', error);
+      return internalError('Authentication service unavailable');
+    }
+
     if (!user) {
       return unauthorizedError('Invalid or expired token');
     }
@@ -101,9 +108,14 @@ export function withOptionalAuth(handler: ApiHandler): ApiHandler {
     const token = extractTokenFromHeader(authHeader);
 
     if (token) {
-      const user = await getUserFromToken(token);
-      if (user) {
-        (req as AuthenticatedRequest).user = user;
+      try {
+        const user = await getUserFromToken(token);
+        if (user) {
+          (req as AuthenticatedRequest).user = user;
+        }
+      } catch (error) {
+        console.error('[Auth] getUserFromToken error (optional):', error);
+        // Don't block the request; proceed without auth if token check fails
       }
     }
 
