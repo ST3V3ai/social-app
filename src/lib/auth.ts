@@ -64,7 +64,11 @@ export function generateRefreshToken(user: Pick<User, 'id' | 'email' | 'role'>):
     role: user.role,
     type: 'refresh',
   };
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: `${REFRESH_TOKEN_EXPIRY_DAYS}d` });
+  // Add jti (JWT ID) for uniqueness to prevent hash collisions when tokens are generated in same second
+  return jwt.sign(payload, JWT_SECRET, { 
+    expiresIn: `${REFRESH_TOKEN_EXPIRY_DAYS}d`,
+    jwtid: crypto.randomBytes(16).toString('hex'),
+  });
 }
 
 export function verifyToken(token: string): JWTPayload | null {
@@ -134,6 +138,19 @@ export async function verifyMagicLink(token: string): Promise<{
   if (magicLink.user) {
     const user = await prisma.user.update({
       where: { id: magicLink.user.id },
+      data: { emailVerified: true },
+    });
+    return { user, isNewUser: false };
+  }
+
+  // Check if user already exists with this email (in case userId wasn't linked)
+  const existingUser = await prisma.user.findUnique({
+    where: { email: magicLink.email },
+  });
+
+  if (existingUser) {
+    const user = await prisma.user.update({
+      where: { id: existingUser.id },
       data: { emailVerified: true },
     });
     return { user, isNewUser: false };
