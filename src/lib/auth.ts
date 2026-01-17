@@ -156,13 +156,23 @@ export async function verifyMagicLink(token: string): Promise<{
     return { user, isNewUser: false };
   }
 
-  // Create new user
+  // Create new user with display name from email prefix
+  const emailPrefix = magicLink.email.split('@')[0];
+  // Clean up the prefix: replace dots/underscores with spaces, capitalize words
+  const displayName = emailPrefix
+    .replace(/[._-]/g, ' ')
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+
   const newUser = await prisma.user.create({
     data: {
       email: magicLink.email,
       emailVerified: true,
       profile: {
-        create: {},
+        create: {
+          displayName,
+        },
       },
     },
   });

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Input, Textarea } from '@/components/ui';
+import { Button, Input, Textarea, TimezoneSelect } from '@/components/ui';
 
 interface EventFormData {
   title: string;
@@ -30,34 +30,18 @@ interface EventFormProps {
   isLoading?: boolean;
 }
 
+// Categories must match API validation (lowercase with hyphens)
 const CATEGORIES = [
-  'Social',
-  'Music',
-  'Arts',
-  'Sports',
-  'Food & Drink',
-  'Tech',
-  'Business',
-  'Health',
-  'Education',
-  'Community',
-  'Other',
-];
-
-const TIMEZONES = [
-  'America/New_York',
-  'America/Chicago',
-  'America/Denver',
-  'America/Los_Angeles',
-  'America/Phoenix',
-  'America/Anchorage',
-  'Pacific/Honolulu',
-  'Europe/London',
-  'Europe/Paris',
-  'Europe/Berlin',
-  'Asia/Tokyo',
-  'Asia/Shanghai',
-  'Australia/Sydney',
+  { value: 'community', label: 'Community' },
+  { value: 'music', label: 'Music' },
+  { value: 'arts', label: 'Arts' },
+  { value: 'sports', label: 'Sports' },
+  { value: 'food-drink', label: 'Food & Drink' },
+  { value: 'networking', label: 'Networking' },
+  { value: 'classes', label: 'Classes & Workshops' },
+  { value: 'outdoors', label: 'Outdoors' },
+  { value: 'games', label: 'Games' },
+  { value: 'other', label: 'Other' },
 ];
 
 export function EventForm({
@@ -184,7 +168,7 @@ export function EventForm({
         >
           <option value="">Select a category</option>
           {CATEGORIES.map((cat) => (
-            <option key={cat} value={cat}>{cat}</option>
+            <option key={cat.value} value={cat.value}>{cat.label}</option>
           ))}
         </select>
       </div>
@@ -251,15 +235,10 @@ export function EventForm({
         <label className="block text-sm font-medium text-gray-700 mb-1">
           Timezone
         </label>
-        <select
+        <TimezoneSelect
           value={formData.timezone}
-          onChange={(e) => updateField('timezone', e.target.value)}
-          className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        >
-          {TIMEZONES.map((tz) => (
-            <option key={tz} value={tz}>{tz}</option>
-          ))}
-        </select>
+          onChange={(value) => updateField('timezone', value)}
+        />
       </div>
 
       {/* Location */}
@@ -379,11 +358,11 @@ export function EventForm({
               onChange={(e) => updateField('allowPlusOnes', e.target.checked)}
               className="w-4 h-4 text-indigo-600 rounded"
             />
-            <span className="text-sm text-gray-700">Allow plus-ones</span>
+            <span className="text-sm font-medium text-gray-900">Allow plus-ones</span>
           </label>
           {formData.allowPlusOnes && (
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">Max:</span>
+              <span className="text-sm text-gray-700">Max:</span>
               <input
                 type="number"
                 min={1}
