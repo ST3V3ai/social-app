@@ -160,6 +160,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       const data = await response.json();
+      // Extract detailed validation errors if available
+      if (data.error?.details && Array.isArray(data.error.details)) {
+        const messages = data.error.details.map((d: { message: string }) => d.message).join('. ');
+        return { success: false, error: messages || data.error?.message || 'Registration failed' };
+      }
       return { success: false, error: data.error?.message || 'Registration failed' };
     } catch (e) {
       return { success: false, error: 'Network error' };

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers';
 import { Button, Input, Card, PasswordStrengthIndicator } from '@/components/ui';
+import { isPasswordValid } from '@/lib/password-validation';
 import Link from 'next/link';
 
 interface ProfileData {
@@ -142,6 +143,12 @@ export default function SettingsPage() {
       return;
     }
 
+    // Validate password meets all requirements before submitting
+    if (!isPasswordValid(passwordData.newPassword)) {
+      setPasswordError('Password does not meet all requirements. Please check the requirements below.');
+      return;
+    }
+
     setIsPasswordSaving(true);
 
     try {
@@ -164,7 +171,13 @@ export default function SettingsPage() {
         setTimeout(() => setPasswordSuccess(''), 3000);
       } else {
         const data = await response.json();
-        setPasswordError(data.error?.message || 'Failed to update password');
+        // Extract detailed validation errors if available
+        if (data.error?.details && Array.isArray(data.error.details)) {
+          const messages = data.error.details.map((d: { message: string }) => d.message).join('. ');
+          setPasswordError(messages || data.error?.message || 'Failed to update password');
+        } else {
+          setPasswordError(data.error?.message || 'Failed to update password');
+        }
       }
     } catch {
       setPasswordError('Something went wrong. Please try again.');

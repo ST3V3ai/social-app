@@ -191,6 +191,19 @@ Verify containers are running:
 docker ps | grep gather
 ```
 
+#### Local Environment Setup
+
+Create a `.env.local` file for local development overrides:
+```bash
+# .env.local - local development overrides
+PORT=32300
+HOST=0.0.0.0
+NEXT_PUBLIC_APP_URL="http://localhost:32300"
+NEXT_PUBLIC_API_URL="http://localhost:32300/api"
+```
+
+This ensures the SSR fetch uses the correct local URL. Without this, event pages may return 404 after creation.
+
 #### Development Mode
 ```bash
 npm run dev
@@ -321,6 +334,66 @@ npx prisma studio
 
 # Reset database (WARNING: deletes all data)
 npx prisma migrate reset
+```
+
+### Email Testing Locally
+
+The app supports multiple email providers. For local development, you have several options:
+
+#### Option 1: Use MailHog (Recommended for Development)
+
+MailHog captures all emails locally without sending them:
+
+```bash
+# Add MailHog to docker-compose.yml or run standalone
+docker run -d -p 1025:1025 -p 8025:8025 mailhog/mailhog
+
+# Configure .env.local to use MailHog
+SMTP_HOST=localhost
+SMTP_PORT=1025
+SMTP_SECURE=false
+SMTP_USER=
+SMTP_PASS=
+```
+
+View captured emails at: http://localhost:8025
+
+#### Option 2: Console Logging
+
+Set `SMTP_CAPTURE=true` in `.env.local` to log email content to the console instead of sending:
+
+```bash
+# .env.local
+SMTP_CAPTURE=true
+```
+
+#### Option 3: Real SMTP (Gmail)
+
+For testing actual email delivery, use Gmail with an App Password:
+
+```bash
+# .env.local
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+```
+
+**Note:** Create an App Password at https://myaccount.google.com/apppasswords (requires 2FA enabled).
+
+#### Troubleshooting Email Issues
+
+| Issue | Solution |
+|-------|----------|
+| Emails not arriving | Check spam folder, verify SMTP credentials |
+| "Connection refused" | SMTP server not running or wrong port |
+| "[Email] Sent via SMTP" but no email | Check recipient, domain might be blocked |
+| Rate limiting | Gmail limits ~500 emails/day |
+
+**Email Debug Logging:** The app logs email send attempts with `[Email]` prefix. Check server logs:
+```bash
+tail -f /tmp/gather-dev.log | grep Email
 ```
 
 ### Building

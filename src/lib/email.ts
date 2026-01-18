@@ -39,21 +39,31 @@ export interface SendEmailOptions {
 }
 
 export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
+  // Check for capture mode first (development convenience)
+  if (process.env.SMTP_CAPTURE === 'true') {
+    console.log('[Email] CAPTURE MODE - Email not sent, logged instead:');
+    console.log('[Email] To:', options.to);
+    console.log('[Email] Subject:', options.subject);
+    console.log('[Email] Content preview:', options.text || options.html.substring(0, 200) + '...');
+    return true;
+  }
+
   // Priority 1: Use SMTP (Gmail, etc.) if configured
   const smtpTransport = getSmtpTransporter();
   if (smtpTransport) {
     try {
-      await smtpTransport.sendMail({
+      const result = await smtpTransport.sendMail({
         from: `"${APP_NAME}" <${process.env.SMTP_USER}>`,
         to: options.to,
         subject: options.subject,
         html: options.html,
         text: options.text,
       });
-      console.log('[Email] Sent via SMTP to:', options.to);
+      console.log('[Email] Sent via SMTP to:', options.to, 'messageId:', result.messageId);
       return true;
     } catch (error) {
-      console.error('[Email] SMTP send failed:', error);
+      console.error('[Email] SMTP send failed:', error instanceof Error ? error.message : String(error));
+      console.error('[Email] SMTP error details:', error);
       return false;
     }
   }
@@ -66,23 +76,24 @@ export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
         console.error('[Email] Resend not initialized');
         return false;
       }
-      await resend.emails.send({
+      const result = await resend.emails.send({
         from: FROM_EMAIL,
         to: options.to,
         subject: options.subject,
         html: options.html,
         text: options.text,
       });
-      console.log('[Email] Sent via Resend to:', options.to);
+      console.log('[Email] Sent via Resend to:', options.to, 'id:', result.data?.id);
       return true;
     } catch (error) {
-      console.error('[Email] Resend send failed:', error);
+      console.error('[Email] Resend send failed:', error instanceof Error ? error.message : String(error));
+      console.error('[Email] Resend error details:', error);
       return false;
     }
   }
 
   // Fallback: Log to console (development mode)
-  console.log('[Email] Would send email:', {
+  console.log('[Email] No email provider configured. Would send email:', {
     to: options.to,
     subject: options.subject,
   });
