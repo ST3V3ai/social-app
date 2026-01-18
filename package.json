@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "PORT=32300 HOST=0.0.0.0 next dev -p 32300 -H 0.0.0.0",
     "build": "next build",
-    "start": "next start",
+    "start": "PORT=32300 HOST=0.0.0.0 next start -p 32300 -H 0.0.0.0",
     "lint": "eslint",
     "test": "jest",
     "test:watch": "jest --watch",

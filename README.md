@@ -42,7 +42,7 @@ A full-stack event management platform built with Next.js 14, TypeScript, Prisma
    npm run dev
    ```
 
-6. **Open [http://localhost:3000](http://localhost:3000)**
+6. **Open [http://localhost:32300](http://localhost:32300)**
 
 ## 🏗️ Architecture
 
@@ -195,24 +195,24 @@ docker ps | grep gather
 ```bash
 npm run dev
 ```
-This starts the Next.js dev server with hot reload on http://localhost:3000
+This starts the Next.js dev server with hot reload on http://localhost:32300 and binds to 0.0.0.0
 
-#### Ensure server binds to port 3000
+#### Ensure server binds to port 32300 and host 0.0.0.0
 
-By default the dev server listens on port 3000. If that port is already in use, Next will auto-select a different port (e.g. 3001). To avoid surprises and ensure the app always runs on port 3000 during development, follow these steps:
+The project is configured to always bind the dev and production servers to port 32300 and host 0.0.0.0. If that port is already in use, Next may auto-select a different port. To avoid surprises and ensure the app always runs on port 32300 and is reachable from other hosts, follow these steps:
 
-- Start explicitly on port 3000 (Linux/macOS):
+- Start explicitly on port 32300 and host 0.0.0.0 (Linux/macOS):
 
 ```bash
 # from the `gather` folder
-PORT=3000 npm run dev
+PORT=32300 HOST=0.0.0.0 npm run dev
 ```
 
-- If port 3000 is in use, find and stop the owning process (only stop processes you recognize):
+- If port 32300 is in use, find and stop the owning process (only stop processes you recognize):
 
 ```bash
-# show the process using port 3000
-lsof -i :3000 -sTCP:LISTEN -Pn
+# show the process using port 32300
+lsof -i :32300 -sTCP:LISTEN -Pn
 
 # if it's a stray local Next/Node process owned by you, stop it safely
 # (replace <PID> with the process id from the previous command)
@@ -228,7 +228,7 @@ ps aux | grep -E "node .*next|next dev|next start" | grep -v grep
 kill <PID>
 ```
 
-Note: Avoid killing system processes or services you do not recognize. If a non-local process occupies port 3000 (for example, a Docker container or another service), stop that service with its proper tooling (docker, systemctl, etc.).
+Note: Avoid killing system processes or services you do not recognize. If a non-local process occupies port 32300 (for example, a Docker container or another service), stop that service with its proper tooling (docker, systemctl, etc.).
 
 #### Production Mode
 ```bash
@@ -245,7 +245,7 @@ If the server stops responding or you need to restart:
 
 ```bash
 # Method 1: Kill by port and restart
-lsof -ti:3000 | xargs kill -9 2>/dev/null
+lsof -ti:32300 | xargs kill -9 2>/dev/null
 npm start
 
 # Method 2: Kill by process name and restart  
@@ -256,7 +256,7 @@ npm start
 nohup npm start > /tmp/server.log 2>&1 &
 
 # Check if server is running
-curl -s http://localhost:3000/api/auth/me
+curl -s http://localhost:32300/api/auth/me
 # Expected: {"error":{"code":"UNAUTHORIZED","message":"Missing authorization token"}}
 ```
 
