@@ -285,7 +285,7 @@ export function getYahooCalendarUrl(event: CalendarEvent): string {
     ? Math.round(
         (new Date(event.endTime).getTime() -
           new Date(event.startTime).getTime()) /
-          (1000 * 60 * 60)
+          HOUR_IN_MS
       )
     : 1;
 

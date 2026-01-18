@@ -78,11 +78,13 @@ async function getHandler(req: NextRequest, context?: { params: Promise<Record<s
     const organizerName = event.organizer.profile?.displayName || 'Gather User';
     const eventUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://gather.app'}/e/${event.slug}`;
     
-    // Calculate sequence number based on how many times the event has been updated
-    // This helps calendar apps understand when an event has changed
+    // Calculate sequence number based on days since creation
+    // This provides a reasonable incrementing counter for calendar updates
+    // Increments by 1 for each day an event has been modified
     const createdTime = event.createdAt.getTime();
     const updatedTime = event.updatedAt.getTime();
-    const sequence = Math.floor((updatedTime - createdTime) / 1000); // Simple sequence based on time diff
+    const daysSinceCreation = Math.floor((updatedTime - createdTime) / (1000 * 60 * 60 * 24));
+    const sequence = Math.max(0, daysSinceCreation);
 
     // Determine event status
     let status: 'CONFIRMED' | 'TENTATIVE' | 'CANCELLED' = 'CONFIRMED';
