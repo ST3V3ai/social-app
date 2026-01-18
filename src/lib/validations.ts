@@ -43,7 +43,7 @@ export const resetPasswordSchema = z.object({
 });
 
 export const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1, 'Current password is required').optional(),
+  currentPassword: z.string().optional(),
   newPassword: z.string()
     .min(8, 'Password must be at least 8 characters')
     .max(128, 'Password must be less than 128 characters'),

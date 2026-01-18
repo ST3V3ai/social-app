@@ -18,3 +18,5 @@ export { TimezoneSelect } from './TimezoneSelect';
 export { PasswordStrengthIndicator } from './PasswordStrengthIndicator';
 
 export { PublicEventConfirmationModal } from './PublicEventConfirmationModal';
+
+export { LocationPicker } from './LocationPicker';

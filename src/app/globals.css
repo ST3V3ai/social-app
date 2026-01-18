@@ -5,6 +5,11 @@
   --foreground: #171717;
 }
 
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -13,7 +18,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not(.dark) {
     --background: #0a0a0a;
     --foreground: #ededed;
   }
@@ -23,4 +28,60 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+/* Dark mode overrides for existing components */
+.dark {
+  /* Background colors */
+  --tw-bg-gray-50: rgb(24 24 27);
+  --tw-bg-gray-100: rgb(39 39 42);
+  --tw-bg-gray-200: rgb(63 63 70);
+  --tw-bg-white: rgb(24 24 27);
+  
+  /* Text colors */
+  --tw-text-gray-600: rgb(161 161 170);
+  --tw-text-gray-700: rgb(212 212 216);
+  --tw-text-gray-900: rgb(250 250 250);
+  
+  /* Border colors */
+  --tw-border-gray-200: rgb(63 63 70);
+  --tw-border-gray-300: rgb(82 82 91);
+}
+
+.dark .bg-gray-50 {
+  background-color: rgb(24 24 27) !important;
+}
+
+.dark .bg-gray-100 {
+  background-color: rgb(39 39 42) !important;
+}
+
+.dark .bg-white {
+  background-color: rgb(24 24 27) !important;
+  color: rgb(250 250 250) !important;
+}
+
+.dark .text-gray-600 {
+  color: rgb(161 161 170) !important;
+}
+
+.dark .text-gray-700 {
+  color: rgb(212 212 216) !important;
+}
+
+.dark .text-gray-900 {
+  color: rgb(250 250 250) !important;
+}
+
+.dark .border-gray-200 {
+  border-color: rgb(63 63 70) !important;
+}
+
+.dark .border-gray-300 {
+  border-color: rgb(82 82 91) !important;
+}
+
+.dark .shadow-lg {
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.3);
 }

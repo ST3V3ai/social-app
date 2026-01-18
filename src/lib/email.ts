@@ -52,14 +52,20 @@ export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
   const smtpTransport = getSmtpTransporter();
   if (smtpTransport) {
     try {
-      const result = await smtpTransport.sendMail({
-        from: `"${APP_NAME}" <${process.env.SMTP_USER}>`,
-        to: options.to,
-        subject: options.subject,
-        html: options.html,
-        text: options.text,
-      });
-      console.log('[Email] Sent via SMTP to:', options.to, 'messageId:', result.messageId);
+        const start = Date.now();
+        const info = await smtpTransport.sendMail({
+          from: `"${APP_NAME}" <${process.env.SMTP_USER}>`,
+          to: options.to,
+          subject: options.subject,
+          html: options.html,
+          text: options.text,
+        });
+        const elapsed = Date.now() - start;
+        try {
+          console.log('[Email] Sent via SMTP to:', options.to, 'messageId:', info.messageId, 'response:', info.response, `elapsed_ms:${elapsed}`);
+        } catch (e) {
+          console.log('[Email] Sent via SMTP to:', options.to, `elapsed_ms:${elapsed}`);
+        }
       return true;
     } catch (error) {
       console.error('[Email] SMTP send failed:', error instanceof Error ? error.message : String(error));

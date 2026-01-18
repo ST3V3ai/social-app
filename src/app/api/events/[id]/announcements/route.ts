@@ -103,9 +103,8 @@ async function postHandler(req: AuthenticatedRequest, context?: { params: Promis
         author: {
           select: {
             id: true,
-            displayName: true,
             profile: {
-              select: { avatarUrl: true },
+              select: { displayName: true, avatarUrl: true },
             },
           },
         },

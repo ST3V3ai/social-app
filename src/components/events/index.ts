@@ -10,3 +10,5 @@ export { EventForm } from './EventForm';
 export { ShareButton } from './ShareButton';
 
 export { CancelEventButton } from './CancelEventButton';
+
+export { AddToCalendar } from './AddToCalendar';

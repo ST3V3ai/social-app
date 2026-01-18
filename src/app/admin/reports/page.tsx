@@ -4,11 +4,13 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/components/providers';
+import { useAdminProtection } from '@/lib/hooks/useAdminProtection';
 import { Card } from '@/components/ui';
 
 export default function AdminReportsPage() {
   const router = useRouter();
   const { isAuthenticated, isLoading } = useAuth();
+  const { isAdmin, isLoading: adminLoading } = useAdminProtection();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {

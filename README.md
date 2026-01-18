@@ -210,6 +210,33 @@ npm run dev
 ```
 This starts the Next.js dev server with hot reload on http://localhost:32300 and binds to 0.0.0.0
 
+#### Email Safety — DO NOT SEND REAL EMAILS IN DEVELOPMENT
+
+NEVER send real emails from your local development environment. Accidental sends can spam real users and cause delivery blocks. Follow one of these safe options every time you run the app locally:
+
+- Capture mode (recommended): add a `gather/.env.local` with:
+
+```bash
+# prevents the app from sending through SMTP/Resend and logs emails instead
+SMTP_CAPTURE=true
+```
+
+- MailHog (visual capture UI): run MailHog locally and point SMTP at it:
+
+```bash
+docker run --rm -p 1025:1025 -p 8025:8025 mailhog/mailhog
+# then in gather/.env.local
+SMTP_HOST=localhost
+SMTP_PORT=1025
+SMTP_SECURE=false
+SMTP_USER=
+SMTP_PASS=
+```
+
+- Staging / production: only configure `RESEND_API_KEY` or real SMTP credentials in non-development environments. Never store production credentials in the repository — use your hosting provider's secret management or `.env.local` (which is gitignored).
+
+If you see any entries in Gmail inboxes or delivery errors like "Address not found" for `*.test.gather.app`, stop and switch to capture mode immediately. The project includes logging that shows SMTP responses and elapsed time; use those logs to diagnose issues without resending to real recipients.
+
 #### Ensure server binds to port 32300 and host 0.0.0.0
 
 The project is configured to always bind the dev and production servers to port 32300 and host 0.0.0.0. If that port is already in use, Next may auto-select a different port. To avoid surprises and ensure the app always runs on port 32300 and is reachable from other hosts, follow these steps:

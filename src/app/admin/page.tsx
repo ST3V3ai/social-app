@@ -4,17 +4,11 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/components/providers';
+import { useAdminProtection } from '@/lib/hooks/useAdminProtection';
 import { Card } from '@/components/ui';
 
 export default function AdminPage() {
-  const router = useRouter();
-  const { isAuthenticated, isLoading } = useAuth();
-
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push('/login?redirect=/admin');
-    }
-  }, [isLoading, isAuthenticated, router]);
+  const { isAdmin, isLoading } = useAdminProtection();
 
   if (isLoading) {
     return (
@@ -24,7 +18,7 @@ export default function AdminPage() {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!isAdmin) {
     return null;
   }
 

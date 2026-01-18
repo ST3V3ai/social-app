@@ -1,7 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Input, Textarea, TimezoneSelect, PublicEventConfirmationModal } from '@/components/ui';
+import { Button, Input, Textarea, TimezoneSelect, PublicEventConfirmationModal, LocationPicker } from '@/components/ui';
+
+interface LocationData {
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  placeId?: string;
+}
 
 interface EventFormData {
   title: string;
@@ -13,6 +21,7 @@ interface EventFormData {
   timezone: string;
   isOnline: boolean;
   locationString: string;
+  locationData?: LocationData | null;
   onlineUrl: string;
   privacy: 'PUBLIC' | 'UNLISTED' | 'PRIVATE';
   category: string;
@@ -60,6 +69,7 @@ export function EventForm({
     timezone: initialData?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
     isOnline: initialData?.isOnline ?? false,
     locationString: initialData?.locationString || '',
+    locationData: initialData?.locationData ?? null,
     onlineUrl: initialData?.onlineUrl || '',
     privacy: initialData?.privacy || 'PRIVATE',
     category: initialData?.category || '',
@@ -296,13 +306,23 @@ export function EventForm({
             type="url"
           />
         ) : (
-          <Input
-            label="Location *"
-            value={formData.locationString}
-            onChange={(e) => updateField('locationString', e.target.value)}
-            error={errors.locationString}
-            placeholder="Enter the venue or address"
-          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Location *
+            </label>
+            <LocationPicker
+              value={formData.locationString}
+              location={formData.locationData}
+              onChange={(locationString, location) => {
+                updateField('locationString', locationString);
+                if (location) {
+                  setFormData((prev) => ({ ...prev, locationData: location }));
+                }
+              }}
+              placeholder="Search for a venue or address"
+              error={errors.locationString}
+            />
+          </div>
         )}
       </div>
 

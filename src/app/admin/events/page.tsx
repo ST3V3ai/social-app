@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/components/providers';
+import { useAdminProtection } from '@/lib/hooks/useAdminProtection';
 import { Button, Card, Input } from '@/components/ui';
 
 interface Event {
@@ -40,6 +41,7 @@ interface EventsResponse {
 export default function AdminEventsPage() {
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAdmin, isLoading: adminLoading } = useAdminProtection();
 
   const [events, setEvents] = useState<Event[]>([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 1 });

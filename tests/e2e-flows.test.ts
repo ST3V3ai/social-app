@@ -8,10 +8,8 @@
  * - RSVP flows
  */
 
-import { prisma, apiRequest, testEmail } from './setup';
+import { prisma, apiRequest, testEmail, BASE_URL } from './setup';
 import { hashToken } from '@/lib/auth';
-
-const BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:3000';
 
 // Create a test user with magic link and return credentials
 async function createTestUser(prefix: string): Promise<{ id: string; email: string; token: string }> {

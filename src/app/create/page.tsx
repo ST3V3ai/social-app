@@ -23,6 +23,7 @@ export default function CreateEventPage() {
     timezone: string;
     isOnline: boolean;
     locationString: string;
+    locationData?: { name: string; address: string; lat: number; lng: number } | null;
     onlineUrl: string;
     privacy: 'PUBLIC' | 'UNLISTED' | 'PRIVATE';
     category: string;
@@ -58,7 +59,12 @@ export default function CreateEventPage() {
           endTime,
           timezone: formData.timezone,
           isOnline: formData.isOnline,
-          location: formData.isOnline ? undefined : (formData.locationString ? { name: formData.locationString, address: formData.locationString } : undefined),
+          location: formData.isOnline ? undefined : (formData.locationString ? {
+            name: formData.locationData?.name || formData.locationString,
+            address: formData.locationData?.address || formData.locationString,
+            lat: formData.locationData?.lat,
+            lng: formData.locationData?.lng,
+          } : undefined),
           onlineUrl: formData.isOnline ? formData.onlineUrl : undefined,
           privacy: formData.privacy,
           category: formData.category || undefined,

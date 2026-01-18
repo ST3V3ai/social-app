@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/components/providers';
+import { useAuth, useTheme } from '@/components/providers';
 import { Button, Input, Card, PasswordStrengthIndicator } from '@/components/ui';
 import { isPasswordValid } from '@/lib/password-validation';
 import Link from 'next/link';
@@ -18,7 +18,9 @@ interface ProfileData {
 export default function SettingsPage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
-  const hasPassword = user?.hasPassword !== false;
+  const { theme, setTheme } = useTheme();
+  // Explicitly check if user has a password - undefined/null means we don't know yet
+  const hasPassword = user?.hasPassword === true;
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
@@ -128,13 +130,14 @@ export default function SettingsPage() {
     setPasswordError('');
     setPasswordSuccess('');
 
-    if (hasPassword && !passwordData.currentPassword) {
-      setPasswordError('Please provide your current password.');
+    // Only require current password if user already has one
+    if (hasPassword && !passwordData.currentPassword?.trim()) {
+      setPasswordError('Please enter your current password.');
       return;
     }
 
     if (!passwordData.newPassword) {
-      setPasswordError('Please provide a new password.');
+      setPasswordError('Please enter a new password.');
       return;
     }
 
@@ -160,13 +163,13 @@ export default function SettingsPage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          currentPassword: passwordData.currentPassword,
+          ...(hasPassword ? { currentPassword: passwordData.currentPassword } : {}),
           newPassword: passwordData.newPassword,
         }),
       });
 
       if (response.ok) {
-        setPasswordSuccess('Password updated successfully.');
+        setPasswordSuccess(hasPassword ? 'Password updated successfully!' : 'Password set successfully! You can now sign in with your password.');
         setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
         setTimeout(() => setPasswordSuccess(''), 3000);
       } else {
@@ -293,6 +296,57 @@ export default function SettingsPage() {
               </Button>
             </div>
           </form>
+        </Card>
+
+        <Card padding="lg" className="mt-6">
+          <div className="space-y-6">
+            <h2 className="text-lg font-semibold text-gray-900 border-b pb-2">
+              Appearance
+            </h2>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Theme
+              </label>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setTheme('light')}
+                  className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all ${
+                    theme === 'light'
+                      ? 'border-indigo-600 bg-indigo-50 text-indigo-900'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                    <span className="font-medium">Light</span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTheme('dark')}
+                  className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all ${
+                    theme === 'dark'
+                      ? 'border-indigo-600 bg-indigo-50 text-indigo-900'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                    <span className="font-medium">Dark</span>
+                  </div>
+                </button>
+              </div>
+              <p className="mt-2 text-sm text-gray-500">
+                Choose your preferred color scheme
+              </p>
+            </div>
+          </div>
         </Card>
 
         <Card padding="lg" className="mt-6">

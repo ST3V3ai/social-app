@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db';
 import { redis } from '@/lib/redis';
 
 // Base URL for API tests
-export const BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:3000';
+export const BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:32300';
 
 // Clear rate limits from Redis to prevent 429 errors during tests
 export async function clearRateLimits() {

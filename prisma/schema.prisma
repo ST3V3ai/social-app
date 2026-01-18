@@ -556,15 +556,27 @@ model AuditLog {
 
 // ============ CALENDAR ============
 
+enum CalendarProvider {
+  GOOGLE
+  APPLE
+  OUTLOOK
+}
+
 model CalendarToken {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
-  token     String   @unique @db.VarChar(100)
-  createdAt DateTime @default(now()) @map("created_at")
+  id           String           @id @default(uuid()) @db.Uuid
+  userId       String           @map("user_id") @db.Uuid
+  provider     CalendarProvider @default(GOOGLE)
+  accessToken  String           @map("access_token") @db.Text
+  refreshToken String?          @map("refresh_token") @db.Text
+  expiresAt    DateTime         @map("expires_at")
+  scope        String?          @db.VarChar(500)
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([token])
+  @@unique([userId, provider], name: "userId_provider")
+  @@index([userId])
   @@map("calendar_tokens")
 }
 

@@ -10,7 +10,8 @@ interface EventPageProps {
 
 async function getEvent(slug: string) {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    // Use internal URL for server-side fetch
+    const baseUrl = process.env.INTERNAL_API_URL || 'http://localhost:32300';
     const res = await fetch(`${baseUrl}/api/events/${slug}`, {
       cache: 'no-store',
     });

@@ -5,8 +5,9 @@ import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/components/providers';
 import { EventCard } from '@/components/events';
-import { Button, Card } from '@/components/ui';
+import { Button, Card, Badge } from '@/components/ui';
 import Link from 'next/link';
+import { formatDistanceToNow } from 'date-fns';
 
 interface Event {
   id: string;
@@ -39,6 +40,50 @@ interface EventsResponse {
   };
 }
 
+interface Invite {
+  id: string;
+  token: string;
+  status: string;
+  message: string | null;
+  type: string;
+  createdAt: string;
+  expiresAt: string | null;
+  event: {
+    id: string;
+    slug: string;
+    title: string;
+    coverImageUrl: string | null;
+    startTime: string;
+    endTime: string | null;
+    timezone: string;
+    privacy: string;
+    status: string;
+    location: { name: string; address?: string | null } | null;
+    host: {
+      id: string;
+      displayName: string;
+      avatarUrl?: string | null;
+    };
+  };
+  sender: {
+    id: string;
+    displayName: string;
+    avatarUrl?: string | null;
+  };
+}
+
+interface InvitesResponse {
+  data: {
+    invites: Invite[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
+  };
+}
+
 async function fetchMyEvents(type: string, page: number): Promise<EventsResponse> {
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
   const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
@@ -56,6 +101,17 @@ async function fetchMyEvents(type: string, page: number): Promise<EventsResponse
   return res.json();
 }
 
+async function fetchPendingInvites(): Promise<InvitesResponse> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+
+  const res = await fetch('/api/users/me/invites?status=PENDING&limit=10', { headers });
+  if (!res.ok) {
+    throw new Error('Failed to fetch invites');
+  }
+  return res.json();
+}
+
 function MyEventsContent() {
   const searchParams = useSearchParams();
   const { user, isLoading: authLoading } = useAuth();
@@ -68,6 +124,14 @@ function MyEventsContent() {
     queryFn: () => fetchMyEvents(type, page),
     enabled: !!user,
   });
+
+  const { data: invitesData } = useQuery({
+    queryKey: ['my-invites', user?.id],
+    queryFn: () => fetchPendingInvites(),
+    enabled: !!user,
+  });
+
+  const pendingInvites = invitesData?.data?.invites || [];
 
   if (authLoading) {
     return <EventsLoadingSkeleton />;
@@ -89,6 +153,49 @@ function MyEventsContent() {
 
   return (
     <div>
+      {/* Pending Invitations Section */}
+      {pendingInvites.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <span>📬 Pending Invitations</span>
+            <Badge variant="warning">{pendingInvites.length}</Badge>
+          </h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {pendingInvites.map((invite) => (
+              <Link key={invite.id} href={`/join/${invite.token}`}>
+                <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer border-l-4 border-indigo-500">
+                  <div className="flex items-start gap-3">
+                    {invite.event.coverImageUrl ? (
+                      <img
+                        src={invite.event.coverImageUrl}
+                        alt=""
+                        className="w-16 h-16 rounded-lg object-cover"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-2xl">
+                        🎉
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-gray-900 truncate">{invite.event.title}</h3>
+                      <p className="text-sm text-gray-500">
+                        Invited by {invite.sender.displayName}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {formatDistanceToNow(new Date(invite.createdAt), { addSuffix: true })}
+                      </p>
+                    </div>
+                  </div>
+                  {invite.message && (
+                    <p className="mt-2 text-sm text-gray-600 italic truncate">"{invite.message}"</p>
+                  )}
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Tabs */}
       <div className="flex gap-2 mb-6">
         {['upcoming', 'past', 'all'].map((tab) => (
