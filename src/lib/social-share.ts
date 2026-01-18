@@ -33,9 +33,6 @@ export function getMessengerShareUrl(data: ShareData): string {
  * Opens Telegram with pre-filled message
  */
 export function getTelegramShareUrl(data: ShareData): string {
-  const text = data.description
-    ? `${data.title}\n\n${data.description}\n\n${data.url}`
-    : `${data.title}\n\n${data.url}`;
   return `https://t.me/share/url?url=${encodeURIComponent(data.url)}&text=${encodeURIComponent(data.title)}`;
 }
 
@@ -177,8 +174,9 @@ export interface ShareOption {
   id: string;
   name: string;
   icon: string;
-  getUrl: (data: ShareData) => string | Promise<void>;
+  getUrl: (data: ShareData) => string;
   requiresClipboard?: boolean;
+  isAsync?: boolean;
 }
 
 export function getAllShareOptions(): ShareOption[] {
@@ -229,10 +227,9 @@ export function getAllShareOptions(): ShareOption[] {
       id: 'discord',
       name: 'Discord',
       icon: 'discord',
-      getUrl: async (data: ShareData) => {
-        await copyToClipboard(getDiscordShareText(data));
-      },
+      getUrl: getDiscordShareText,
       requiresClipboard: true,
+      isAsync: true,
     },
     {
       id: 'slack',

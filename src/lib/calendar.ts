@@ -3,6 +3,9 @@
  * Handles ICS generation with update support and subscription feeds
  */
 
+// Constants
+const HOUR_IN_MS = 60 * 60 * 1000;
+
 export interface CalendarEvent {
   id: string;
   slug: string;
@@ -181,7 +184,7 @@ export function getGoogleCalendarUrl(event: CalendarEvent): string {
     ? formatIcsDate(event.endTime)
     : formatIcsDate(
         new Date(
-          new Date(event.startTime).getTime() + 60 * 60 * 1000
+          new Date(event.startTime).getTime() + HOUR_IN_MS
         ).toISOString()
       );
 
@@ -212,7 +215,7 @@ export function getOutlookCalendarUrl(event: CalendarEvent): string {
   const endDate = event.endTime
     ? new Date(event.endTime).toISOString()
     : new Date(
-        new Date(event.startTime).getTime() + 60 * 60 * 1000
+        new Date(event.startTime).getTime() + HOUR_IN_MS
       ).toISOString();
 
   const params = new URLSearchParams({
@@ -242,7 +245,7 @@ export function getOffice365CalendarUrl(event: CalendarEvent): string {
   const endDate = event.endTime
     ? new Date(event.endTime).toISOString()
     : new Date(
-        new Date(event.startTime).getTime() + 60 * 60 * 1000
+        new Date(event.startTime).getTime() + HOUR_IN_MS
       ).toISOString();
 
   const params = new URLSearchParams({
@@ -273,7 +276,7 @@ export function getYahooCalendarUrl(event: CalendarEvent): string {
     ? formatIcsDate(event.endTime)
     : formatIcsDate(
         new Date(
-          new Date(event.startTime).getTime() + 60 * 60 * 1000
+          new Date(event.startTime).getTime() + HOUR_IN_MS
         ).toISOString()
       );
 
