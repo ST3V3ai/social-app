@@ -21,6 +21,7 @@ async function handler(req: AuthenticatedRequest) {
       role: user.role,
       status: user.status,
       emailVerified: user.emailVerified,
+      hasPassword: Boolean(user.passwordHash),
       profile: user.profile
         ? {
             displayName: user.profile.displayName,

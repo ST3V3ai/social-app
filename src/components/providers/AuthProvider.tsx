@@ -8,6 +8,7 @@ interface User {
   role: string;
   displayName?: string;
   avatarUrl?: string;
+  hasPassword?: boolean;
 }
 
 interface AuthContextType {

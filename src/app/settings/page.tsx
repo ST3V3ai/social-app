@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers';
-import { Button, Input, Card } from '@/components/ui';
+import { Button, Input, Card, PasswordStrengthIndicator } from '@/components/ui';
 import Link from 'next/link';
 
 interface ProfileData {
@@ -17,10 +17,14 @@ interface ProfileData {
 export default function SettingsPage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const hasPassword = user?.hasPassword !== false;
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [isPasswordSaving, setIsPasswordSaving] = useState(false);
   
   const [formData, setFormData] = useState<ProfileData>({
     displayName: '',
@@ -28,6 +32,12 @@ export default function SettingsPage() {
     avatarUrl: '',
     locationCity: '',
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  });
+
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
   });
 
   useEffect(() => {
@@ -106,6 +116,61 @@ export default function SettingsPage() {
 
   const updateField = (field: keyof ProfileData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const updatePasswordField = (field: keyof typeof passwordData, value: string) => {
+    setPasswordData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+
+    if (hasPassword && !passwordData.currentPassword) {
+      setPasswordError('Please provide your current password.');
+      return;
+    }
+
+    if (!passwordData.newPassword) {
+      setPasswordError('Please provide a new password.');
+      return;
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setPasswordError('New password and confirmation do not match.');
+      return;
+    }
+
+    setIsPasswordSaving(true);
+
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch('/api/users/me/password', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          currentPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword,
+        }),
+      });
+
+      if (response.ok) {
+        setPasswordSuccess('Password updated successfully.');
+        setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        setTimeout(() => setPasswordSuccess(''), 3000);
+      } else {
+        const data = await response.json();
+        setPasswordError(data.error?.message || 'Failed to update password');
+      }
+    } catch {
+      setPasswordError('Something went wrong. Please try again.');
+    } finally {
+      setIsPasswordSaving(false);
+    }
   };
 
   if (authLoading || isLoading) {
@@ -212,6 +277,67 @@ export default function SettingsPage() {
               </Button>
               <Button type="submit" isLoading={isSaving}>
                 Save Changes
+              </Button>
+            </div>
+          </form>
+        </Card>
+
+        <Card padding="lg" className="mt-6">
+          <form onSubmit={handlePasswordSubmit} className="space-y-6">
+            <h2 className="text-lg font-semibold text-gray-900 border-b pb-2">
+              {hasPassword ? 'Change Password' : 'Set Password'}
+            </h2>
+
+            {!hasPassword && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-700">
+                Your account doesn’t have a password yet. Set one to enable password sign-in.
+              </div>
+            )}
+
+            {passwordError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700">
+                {passwordError}
+              </div>
+            )}
+
+            {passwordSuccess && (
+              <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700">
+                {passwordSuccess}
+              </div>
+            )}
+
+            {hasPassword && (
+              <Input
+                label="Current Password"
+                type="password"
+                value={passwordData.currentPassword}
+                onChange={(e) => updatePasswordField('currentPassword', e.target.value)}
+                placeholder="Enter your current password"
+              />
+            )}
+
+            <div>
+              <Input
+                label="New Password"
+                type="password"
+                value={passwordData.newPassword}
+                onChange={(e) => updatePasswordField('newPassword', e.target.value)}
+                placeholder="Choose a strong password"
+              />
+              <PasswordStrengthIndicator password={passwordData.newPassword} />
+            </div>
+
+            <Input
+              label="Confirm New Password"
+              type="password"
+              value={passwordData.confirmPassword}
+              onChange={(e) => updatePasswordField('confirmPassword', e.target.value)}
+              placeholder="Re-enter new password"
+            />
+
+            <div className="flex justify-end gap-3 pt-4 border-t">
+              <Button type="submit" isLoading={isPasswordSaving}>
+                {hasPassword ? 'Update Password' : 'Set Password'}
               </Button>
             </div>
           </form>
