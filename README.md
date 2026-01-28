@@ -85,6 +85,14 @@ gather/
 
 ## 📋 Features
 
+### Mobile Support 📱
+- **Fully Responsive Design:** Optimized for all screen sizes (mobile, tablet, desktop)
+- **Touch-Friendly UI:** Minimum 44x44px touch targets
+- **Mobile Navigation:** Hamburger menu with collapsible drawer
+- **Responsive Grids:** 1-3 column layouts adapting to viewport
+- **Visual Testing:** Comprehensive screenshot coverage (see [VISUAL_APP_FLOW.md](./VISUAL_APP_FLOW.md))
+- **Progressive Web App Ready:** Installable on mobile devices
+
 ### Authentication
 - Magic link email authentication (passwordless)
 - JWT access tokens (15 min expiry)
@@ -303,14 +311,22 @@ curl -s http://localhost:32300/api/auth/me
 ### Testing
 
 #### Test Suite Overview
-The project includes a comprehensive Jest test suite with 39 tests across 4 files:
+The project includes comprehensive testing:
 
+**Unit & Integration Tests (Jest):**
 | File | Tests | Coverage |
 |------|-------|----------|
 | `tests/auth.test.ts` | 12 | Magic link, token validation, logout |
 | `tests/events.test.ts` | 12 | CRUD, publish, soft delete |
 | `tests/rsvp.test.ts` | 6 | Create/update/cancel RSVPs |
 | `tests/join-flow.test.ts` | 9 | E2E magic link user flows |
+
+**Visual Regression Tests (Playwright):**
+| Test Suite | Pages | Viewports |
+|------------|-------|-----------|
+| `tests/visual/public-pages.spec.ts` | 8 | Mobile + Desktop |
+| `tests/visual/authenticated-pages.spec.ts` | 4 | Mobile + Desktop |
+| `tests/visual/responsive-components.spec.ts` | 3 | Mobile + Desktop |
 
 #### Running Tests
 
@@ -323,7 +339,7 @@ npm start &
 # 2. Clear rate limits from Redis (prevents 429 errors)
 docker exec gather-redis redis-cli KEYS "rl:*" | xargs -r docker exec -i gather-redis redis-cli DEL
 
-# 3. Run all tests
+# 3. Run all unit tests
 npm test
 
 # 4. Run specific test file
@@ -334,7 +350,36 @@ npm run test:coverage
 
 # 6. Run in watch mode (for development)
 npm run test:watch
+
+# 7. Run visual regression tests
+npm run test:visual
+
+# 8. Generate screenshots (mobile + desktop)
+npm run test:screenshots
 ```
+
+#### Visual Testing & Mobile Support
+
+The app includes comprehensive visual regression testing with Playwright:
+
+- **Mobile Viewport:** Pixel 5 (393x851)
+- **Desktop Viewport:** Chrome (1280x720)
+- **Screenshots:** Auto-generated for all major pages
+- **Documentation:** See [VISUAL_APP_FLOW.md](./VISUAL_APP_FLOW.md) and [MOBILE_SUPPORT.md](./MOBILE_SUPPORT.md)
+
+**View Screenshots:**
+```bash
+ls -R screenshots/
+```
+
+All screenshots are organized by viewport:
+```
+screenshots/
+├── Mobile Chrome/     # Mobile screenshots (393x851)
+└── Desktop Chrome/    # Desktop screenshots (1280x720)
+```
+
+
 
 #### Test Troubleshooting
 
