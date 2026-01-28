@@ -3,6 +3,13 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui';
 import { Calendar, ChevronDown, Download, ExternalLink } from 'lucide-react';
+import {
+  getGoogleCalendarUrl,
+  getOutlookCalendarUrl,
+  getOffice365CalendarUrl,
+  getYahooCalendarUrl,
+  type CalendarEvent,
+} from '@/lib/calendar';
 
 interface Event {
   id: string;
@@ -34,28 +41,17 @@ export function AddToCalendar({ event, className = '' }: AddToCalendarProps) {
     ? event.onlineUrl || 'Online Event'
     : event.locationAddress || event.locationName || '';
 
-  // Format dates for Google Calendar URL
-  const formatGoogleDate = (dateStr: string) => {
-    return new Date(dateStr).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
-  };
-
-  // Generate Google Calendar URL (no OAuth required)
-  const getGoogleCalendarUrl = () => {
-    const startDate = formatGoogleDate(event.startTime);
-    const endDate = event.endTime
-      ? formatGoogleDate(event.endTime)
-      : formatGoogleDate(new Date(new Date(event.startTime).getTime() + 60 * 60 * 1000).toISOString());
-
-    const params = new URLSearchParams({
-      action: 'TEMPLATE',
-      text: event.title,
-      dates: `${startDate}/${endDate}`,
-      details: event.description || '',
-      location: location,
-      ctz: event.timezone,
-    });
-
-    return `https://calendar.google.com/calendar/render?${params.toString()}`;
+  // Convert event to CalendarEvent format
+  const calendarEvent: CalendarEvent = {
+    id: event.id,
+    slug: event.slug,
+    title: event.title,
+    description: event.description,
+    startTime: event.startTime,
+    endTime: event.endTime,
+    timezone: event.timezone,
+    location,
+    url: typeof window !== 'undefined' ? window.location.href : undefined,
   };
 
   // Download ICS file
@@ -64,15 +60,41 @@ export function AddToCalendar({ event, className = '' }: AddToCalendarProps) {
     setIsOpen(false);
   };
 
-  // Open Google Calendar in new tab
+  // Open Google Calendar
   const handleGoogleCalendar = () => {
-    window.open(getGoogleCalendarUrl(), '_blank', 'noopener,noreferrer');
+    const url = getGoogleCalendarUrl(calendarEvent);
+    window.open(url, '_blank', 'noopener,noreferrer');
+    setIsOpen(false);
+  };
+
+  // Open Outlook Calendar
+  const handleOutlookCalendar = () => {
+    const url = getOutlookCalendarUrl(calendarEvent);
+    window.open(url, '_blank', 'noopener,noreferrer');
+    setIsOpen(false);
+  };
+
+  // Open Office 365 Calendar
+  const handleOffice365Calendar = () => {
+    const url = getOffice365CalendarUrl(calendarEvent);
+    window.open(url, '_blank', 'noopener,noreferrer');
+    setIsOpen(false);
+  };
+
+  // Open Yahoo Calendar
+  const handleYahooCalendar = () => {
+    const url = getYahooCalendarUrl(calendarEvent);
+    window.open(url, '_blank', 'noopener,noreferrer');
     setIsOpen(false);
   };
 
   // Add to Google Calendar via OAuth (if configured)
   const handleGoogleOAuth = async () => {
-    if (!GOOGLE_CALENDAR_ENABLED) return;
+    if (!GOOGLE_CALENDAR_ENABLED) {
+      // Fallback to URL method
+      handleGoogleCalendar();
+      return;
+    }
 
     setIsAddingToGoogle(true);
     try {
@@ -115,6 +137,13 @@ export function AddToCalendar({ event, className = '' }: AddToCalendarProps) {
     }
   };
 
+  // Subscribe to calendar feed
+  const handleSubscribe = () => {
+    const subscribeUrl = `/api/calendar/subscribe?events=${event.id}`;
+    window.location.href = subscribeUrl;
+    setIsOpen(false);
+  };
+
   return (
     <div className={`relative inline-block ${className}`}>
       <Button
@@ -137,8 +166,15 @@ export function AddToCalendar({ event, className = '' }: AddToCalendarProps) {
           />
 
           {/* Dropdown */}
-          <div className="absolute right-0 mt-2 w-56 rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 z-50">
+          <div className="absolute right-0 mt-2 w-64 rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 z-50">
             <div className="py-1">
+              {/* Calendar Services */}
+              <div className="px-3 py-2">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Quick Add
+                </p>
+              </div>
+
               {GOOGLE_CALENDAR_ENABLED ? (
                 <button
                   onClick={handleGoogleOAuth}
@@ -163,7 +199,7 @@ export function AddToCalendar({ event, className = '' }: AddToCalendarProps) {
                       d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                     />
                   </svg>
-                  {isAddingToGoogle ? 'Adding...' : 'Sync to Google Calendar'}
+                  {isAddingToGoogle ? 'Adding...' : 'Google Calendar (Sync)'}
                 </button>
               ) : (
                 <button
@@ -188,23 +224,65 @@ export function AddToCalendar({ event, className = '' }: AddToCalendarProps) {
                       d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                     />
                   </svg>
-                  <ExternalLink className="h-3 w-3 opacity-50" />
-                  Google Calendar
+                  <span>Google Calendar</span>
+                  <ExternalLink className="h-3 w-3 opacity-50 ml-auto" />
                 </button>
               )}
+
+              <button
+                onClick={handleOutlookCalendar}
+                className="flex w-full items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="#0078D4">
+                  <path d="M23 3v18h-7v-5h-3v5H6V3h17zM8 8H6v2h2V8zm0 3H6v2h2v-2zm0 3H6v2h2v-2zm5-6h-2v2h2V8zm0 3h-2v2h2v-2zm0 3h-2v2h2v-2zm5-6h-2v2h2V8zm0 3h-2v2h2v-2zm0 3h-2v2h2v-2zM1 12v6.5l5.5 3V9l-5.5 3zm3 .9l1.5-.9v3.6l-1.5.9v-3.6z" />
+                </svg>
+                <span>Outlook.com</span>
+                <ExternalLink className="h-3 w-3 opacity-50 ml-auto" />
+              </button>
+
+              <button
+                onClick={handleOffice365Calendar}
+                className="flex w-full items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="#0078D4">
+                  <path d="M23 3v18h-7v-5h-3v5H6V3h17zM8 8H6v2h2V8zm0 3H6v2h2v-2zm0 3H6v2h2v-2zm5-6h-2v2h2V8zm0 3h-2v2h2v-2zm0 3h-2v2h2v-2zm5-6h-2v2h2V8zm0 3h-2v2h2v-2zm0 3h-2v2h2v-2zM1 12v6.5l5.5 3V9l-5.5 3zm3 .9l1.5-.9v3.6l-1.5.9v-3.6z" />
+                </svg>
+                <span>Office 365</span>
+                <ExternalLink className="h-3 w-3 opacity-50 ml-auto" />
+              </button>
+
+              <button
+                onClick={handleYahooCalendar}
+                className="flex w-full items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="#6001D2">
+                  <path d="M12.002 2C6.477 2 2 6.477 2 12.002s4.477 10.002 10.002 10.002c5.525 0 10.002-4.477 10.002-10.002S17.527 2 12.002 2zm1.557 9.329l-3.027 5.392h-2.08l3.027-5.392L8.476 6.329h2.081l1.945 3.464 1.945-3.464h2.08l-3.023 5z" />
+                </svg>
+                <span>Yahoo Calendar</span>
+                <ExternalLink className="h-3 w-3 opacity-50 ml-auto" />
+              </button>
+
+              <div className="border-t border-gray-100 my-1" />
+
+              {/* Download Options */}
+              <div className="px-3 py-2">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Download
+                </p>
+              </div>
 
               <button
                 onClick={handleDownloadIcs}
                 className="flex w-full items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
               >
                 <Download className="h-4 w-4 text-gray-500" />
-                Download .ics file
+                <span>Download .ics file</span>
               </button>
 
-              <div className="border-t border-gray-100 mx-2 my-1" />
+              <div className="border-t border-gray-100 my-1" />
 
               <p className="px-4 py-2 text-xs text-gray-500">
-                .ics works with Apple Calendar, Outlook, and other apps
+                The .ics file works with Apple Calendar, Outlook, and other calendar apps. Updates to the event will be reflected if you re-download the file.
               </p>
             </div>
           </div>

@@ -2,6 +2,15 @@
 
 A full-stack event management platform built with Next.js 14, TypeScript, Prisma, and PostgreSQL. Gather is designed as a modern replacement for Facebook Events with a focus on simplicity, privacy, and real-time collaboration.
 
+## ✨ New Features
+
+- **🔗 Social Sharing**: Share events to 10+ platforms including WhatsApp, Telegram, X (Twitter), Bluesky, Reddit, Discord, and Slack
+- **📅 Advanced Calendar Integration**: Add events to Google Calendar, Outlook, Office 365, Yahoo Calendar with automatic update support
+- **🎨 Rich Social Previews**: OpenGraph and Twitter Card meta tags for beautiful link previews with embedded images
+- **🔄 Calendar Updates**: ICS files with SEQUENCE and LAST-MODIFIED fields for proper event update handling
+
+See [SOCIAL_SHARING.md](./SOCIAL_SHARING.md) for detailed documentation.
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -105,7 +114,10 @@ gather/
 - Capacity limits with optional waitlist
 - Plus-one support
 - Cover images
-- ICS calendar export
+- ICS calendar export with update support
+- Multi-platform social sharing (WhatsApp, Telegram, X/Twitter, Bluesky, Reddit, Discord, Slack, etc.)
+- Calendar integration (Google Calendar, Outlook, Office 365, Yahoo Calendar)
+- Rich OpenGraph/social media previews
 
 ### RSVPs
 - Going, Maybe, Not Going statuses
@@ -129,6 +141,8 @@ gather/
 - Event discussion posts
 - Guest list visibility controls
 - User profiles
+- Multi-platform social sharing with rich previews
+- Easy calendar integration across multiple services
 
 ### Admin/Moderation
 - Content reporting system

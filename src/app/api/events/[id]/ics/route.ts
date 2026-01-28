@@ -7,20 +7,7 @@ import {
   AuthenticatedRequest,
 } from '@/lib/api';
 import { NextRequest, NextResponse } from 'next/server';
-
-// Helper to escape ICS text
-function escapeIcsText(text: string): string {
-  return text
-    .replace(/\\/g, '\\\\')
-    .replace(/;/g, '\\;')
-    .replace(/,/g, '\\,')
-    .replace(/\n/g, '\\n');
-}
-
-// Helper to format date for ICS
-function formatIcsDate(date: Date): string {
-  return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
-}
+import { generateIcsFile, type CalendarEvent } from '@/lib/calendar';
 
 // GET /api/events/[id]/ics - Get event as ICS file
 async function getHandler(req: NextRequest, context?: { params: Promise<Record<string, string>> }) {
@@ -79,39 +66,60 @@ async function getHandler(req: NextRequest, context?: { params: Promise<Record<s
         event.venue.country,
       ].filter(Boolean);
       location = parts.join(', ');
+    } else if (event.isOnline) {
+      location = event.onlineUrl || 'Online Event';
     } else if (event.locationName) {
       location = event.locationName;
+    } else if (event.locationAddress) {
+      location = event.locationAddress;
     }
 
-    // Build ICS content
+    // Build calendar event data
     const organizerName = event.organizer.profile?.displayName || 'Gather User';
     const eventUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://gather.app'}/e/${event.slug}`;
     
-    const icsContent = [
-      'BEGIN:VCALENDAR',
-      'VERSION:2.0',
-      'PRODID:-//Gather//Gather Events//EN',
-      'CALSCALE:GREGORIAN',
-      'METHOD:PUBLISH',
-      'BEGIN:VEVENT',
-      `UID:${event.id}@gather.app`,
-      `DTSTAMP:${formatIcsDate(new Date())}`,
-      `DTSTART:${formatIcsDate(event.startTime)}`,
-      event.endTime ? `DTEND:${formatIcsDate(event.endTime)}` : '',
-      `SUMMARY:${escapeIcsText(event.title)}`,
-      event.description ? `DESCRIPTION:${escapeIcsText(event.description)}` : '',
-      location ? `LOCATION:${escapeIcsText(location)}` : '',
-      `URL:${eventUrl}`,
-      `ORGANIZER;CN=${escapeIcsText(organizerName)}:mailto:noreply@gather.app`,
-      'END:VEVENT',
-      'END:VCALENDAR',
-    ].filter(Boolean).join('\r\n');
+    // Calculate sequence number based on days since creation
+    // This provides a reasonable incrementing counter for calendar updates
+    // Increments by 1 for each day an event has been modified
+    const createdTime = event.createdAt.getTime();
+    const updatedTime = event.updatedAt.getTime();
+    const daysSinceCreation = Math.floor((updatedTime - createdTime) / (1000 * 60 * 60 * 24));
+    const sequence = Math.max(0, daysSinceCreation);
+
+    // Determine event status
+    let status: 'CONFIRMED' | 'TENTATIVE' | 'CANCELLED' = 'CONFIRMED';
+    if (event.status === 'CANCELLED') {
+      status = 'CANCELLED';
+    } else if (event.status === 'DRAFT') {
+      status = 'TENTATIVE';
+    }
+
+    const calendarEvent: CalendarEvent = {
+      id: event.id,
+      slug: event.slug,
+      title: event.title,
+      description: event.description || undefined,
+      startTime: event.startTime,
+      endTime: event.endTime || undefined,
+      timezone: event.timezone,
+      location,
+      url: eventUrl,
+      organizerName,
+      organizerEmail: 'noreply@gather.app',
+      status,
+      sequence,
+      lastModified: event.updatedAt,
+    };
+
+    // Generate ICS file using the utility function
+    const icsContent = generateIcsFile(calendarEvent);
 
     return new NextResponse(icsContent, {
       status: 200,
       headers: {
         'Content-Type': 'text/calendar; charset=utf-8',
         'Content-Disposition': `attachment; filename="${event.slug}.ics"`,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
       },
     });
   } catch (error) {

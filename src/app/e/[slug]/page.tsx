@@ -2,7 +2,8 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { formatDate, formatTime } from '@/lib/utils';
 import { Avatar, Badge } from '@/components/ui';
-import { RSVPButton, GuestAvatars, ShareButton, CancelEventButton } from '@/components/events';
+import { RSVPButton, GuestAvatars, ShareButton, CancelEventButton, AddToCalendar } from '@/components/events';
+import type { Metadata } from 'next';
 
 interface EventPageProps {
   params: Promise<{ slug: string }>;
@@ -21,6 +22,68 @@ async function getEvent(slug: string) {
   } catch {
     return null;
   }
+}
+
+// Generate metadata for OpenGraph/social sharing
+export async function generateMetadata({ params }: EventPageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const event = await getEvent(slug);
+
+  if (!event) {
+    return {
+      title: 'Event Not Found',
+    };
+  }
+
+  const startDate = new Date(event.startTime);
+  const formattedDate = formatDate(startDate);
+  const formattedTime = formatTime(startDate);
+  
+  const location = event.isOnline
+    ? 'Online Event'
+    : event.venue?.name || event.locationString || 'Location TBD';
+
+  const description = event.description
+    ? event.description.substring(0, 200) + (event.description.length > 200 ? '...' : '')
+    : `Join ${event.organizer.displayName} for ${event.title} on ${formattedDate} at ${formattedTime}`;
+
+  const eventUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://gather.app'}/e/${slug}`;
+
+  return {
+    title: `${event.title} | Gather`,
+    description,
+    openGraph: {
+      title: event.title,
+      description,
+      type: 'website',
+      url: eventUrl,
+      siteName: 'Gather',
+      images: event.coverImageUrl
+        ? [
+            {
+              url: event.coverImageUrl,
+              width: 1200,
+              height: 630,
+              alt: event.title,
+            },
+          ]
+        : [],
+      locale: 'en_US',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: event.title,
+      description,
+      images: event.coverImageUrl ? [event.coverImageUrl] : [],
+    },
+    other: {
+      // Structured data for better sharing
+      'og:event:start_time': event.startTime,
+      'og:event:end_time': event.endTime || '',
+      'og:event:location': location,
+      'og:event:organizer': event.organizer.displayName,
+    },
+  };
 }
 
 export default async function EventPage({ params }: EventPageProps) {
@@ -212,16 +275,12 @@ export default async function EventPage({ params }: EventPageProps) {
 
             {/* Actions */}
             <div className="border-t border-gray-200 pt-6 mt-6 flex flex-wrap gap-3">
-              <a
-                href={`/api/events/${event.id}/ics`}
-                className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                Add to Calendar
-              </a>
-              <ShareButton title={event.title} />
+              <AddToCalendar event={event} />
+              <ShareButton 
+                title={event.title}
+                description={event.description}
+                imageUrl={event.coverImageUrl}
+              />
               {event.canManage && (
                 <Link
                   href={`/e/${event.slug}/edit`}
