@@ -21,11 +21,12 @@ test.describe('Authenticated Pages - Visual Tests', () => {
       // Submit form
       await page.locator('button[type="submit"]').click();
       
-      // Wait for navigation
-      await page.waitForURL('/', { timeout: 5000 }).catch(() => {
-        // If login fails, that's ok - we'll skip authenticated tests
-        console.log('Login failed - skipping authenticated page screenshots');
-      });
+      // Wait for navigation - skip these tests if login fails
+      try {
+        await page.waitForURL('/', { timeout: 5000 });
+      } catch {
+        test.skip(true, 'Authentication required - skipping authenticated page tests');
+      }
     }
   });
 

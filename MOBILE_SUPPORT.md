@@ -81,7 +81,7 @@ Screenshots are automatically generated in both mobile and desktop viewports:
 
 ```
 screenshots/
-├── Mobile Chrome/           # iPhone 12 viewport (390x844)
+├── Mobile Chrome/           # Pixel 5 viewport (393x851)
 │   ├── homepage.png
 │   ├── explore.png
 │   ├── login.png
@@ -197,7 +197,7 @@ Visual tests run automatically for:
 
 ### Test Configuration
 
-- **Mobile Device:** iPhone 12 (390x844 viewport)
+- **Mobile Device:** Pixel 5 (393x851 viewport)
 - **Desktop Device:** Standard Chrome (1280x720 viewport)
 - **Full Page Screenshots:** Enabled for all pages
 - **Component Screenshots:** For specific UI elements

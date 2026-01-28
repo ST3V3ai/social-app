@@ -16,7 +16,8 @@ test.describe('Responsive Components - Visual Tests', () => {
       const menuButton = page.locator('button').filter({ hasText: /menu|nav/i }).first();
       if (await menuButton.isVisible()) {
         await menuButton.click();
-        await page.waitForTimeout(500); // Wait for animation
+        // Wait for menu to be visible instead of arbitrary timeout
+        await page.locator('nav').waitFor({ state: 'visible' });
         
         await page.screenshot({ 
           path: `screenshots/${test.info().project.name}/mobile-menu-open.png`,
@@ -30,9 +31,9 @@ test.describe('Responsive Components - Visual Tests', () => {
     await page.goto('/explore');
     await page.waitForLoadState('networkidle');
     
-    // Scroll to see event cards
+    // Scroll to see event cards and wait for content to settle
     await page.evaluate(() => window.scrollTo(0, 300));
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('domcontentloaded');
     
     await page.screenshot({ 
       path: `screenshots/${test.info().project.name}/event-cards.png`,
